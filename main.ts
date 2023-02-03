@@ -1,69 +1,62 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { GeneratorModal } from 'modal';
+import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
-	mySetting: string;
+	enableCurrency: boolean;
+	currencyTypes: object[];
+	currencyFrequency: number;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+	enableCurrency: false,
+	currencyTypes: [{
+		"name": "GP",
+		"rarity": "rare"
+	},
+	{
+		"name": "CP",
+		"rarity": "common"
+	},
+	{
+		"name": "SP",
+		"rarity": "common"
+	},
+	{
+		"name": "PP",
+		"rarity": "rarest"
+	}],
+	currencyFrequency: 50
 }
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 
-	async onload() {
+	async onload() {  
 		await this.loadSettings();
 
 		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
+		const ribbonIconEl = this.addRibbonIcon('book', 'Fantasy Generators', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+			//this.activateView();
+			new GeneratorModal(this.app, (result) => {
+				const copyContent = async () => {
+					try {
+						await navigator.clipboard.writeText(result);
+						new Notice(`${result} was copied to the clipboard.`);
+					} catch (err) {
+						console.error('Failed to copy: ', err);
+						new Notice("Failed to copy, Check error in console.");
+					}
+				}
+				
+				copyContent();
+
+			}, this).open();
 		});
 		// Perform additional things with the ribbon
 		ribbonIconEl.addClass('my-plugin-ribbon-class');
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
@@ -79,7 +72,6 @@ export default class MyPlugin extends Plugin {
 	}
 
 	onunload() {
-
 	}
 
 	async loadSettings() {
@@ -88,22 +80,6 @@ export default class MyPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
 	}
 }
 
@@ -120,18 +96,82 @@ class SampleSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'Settings for my awesome plugin.'});
+		containerEl.createEl('h2', {text: 'Fantasy Content Generator'});
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					console.log('Secret: ' + value);
-					this.plugin.settings.mySetting = value;
+			.setName('Enable Currency for Loot Generation.')
+			.setDesc('If you have Currency in your World or game consider Activating this')
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.enableCurrency);
+				toggle.onChange(async (value) => {
+					this.plugin.settings.enableCurrency = value;
+					this.display();
 					await this.plugin.saveSettings();
-				}));
+				})
+			})
+		
+		if (this.plugin.settings.enableCurrency) {
+
+			new Setting(containerEl).setName("Occurance Rate:").setDesc("Set How Frequently Loot generates currency as a percentage of 100")
+				.addText((text) => { 
+					text.setValue(String(this.plugin.settings.currencyFrequency));
+					text.onChange(async(value) => {
+						if (!(isNaN(+value))) {
+							this.plugin.settings.currencyFrequency = Number(value);
+							await this.plugin.saveSettings();
+						}
+						
+					})
+				})
+
+			const ctext = {
+				name: '',
+				rarity: 'common'
+			}
+			new Setting(containerEl)
+			.setName("Currency Name:")
+			.addText((text) => {
+				text.onChange((value) => {
+					ctext.name = value;
+				})
+			}).addDropdown((drop) => {
+				drop.addOption("common", "Common");
+				drop.addOption("uncommon", "Uncommon");
+				drop.addOption("rare", "Rare");
+				drop.addOption("rarest", "Rarest");
+				drop.onChange((value) => {
+					ctext.rarity = value;
+				})
+			})
+			.addButton((btn) => {
+				btn.setCta().setButtonText("Add")
+					.onClick(async () => {
+						this.plugin.settings.currencyTypes.push(ctext);
+						this.display();
+						await this.plugin.saveSettings();
+					})
+			})
+
+			containerEl.createEl("h3", { text: "Added Currency" });
+			containerEl.createEl("p", { text: "Click remove on a currency you would like to removed" });
+
+			for (let index = 0; index < this.plugin.settings.currencyTypes.length; index++) {
+				new Setting(containerEl)
+					.setName(this.plugin.settings.currencyTypes[index].name)
+					.addButton((btn) => btn
+						.setCta()
+						.setButtonText("Remove")
+						.onClick(async() => {
+							this.plugin.settings.currencyTypes.splice(index, 1);
+							this.display();
+							await this.plugin.saveSettings();
+						})
+				)
+				
+			}
+				
+		}
+
+		//containerEl.createEl("p", {text: this.plugin.settings.currencyTypes.toString()})
 	}
 }
