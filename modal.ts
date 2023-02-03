@@ -16,9 +16,11 @@ import { generateCityName } from "generators/city";
 import { generateLoot } from "generators/loot";
 import MyPlugin from "main";
 import { generateInn } from "generators/inn";
+import { generatePathfinderName } from "generators/Pathfinder/pathfinderName";
 
-const races: string[] = ["none","none", "inn", "settlement", "none", "airships", "drinks", "loot", "metals", "magicaltrees", "ship", "none", "animalgroups", "groups", "religion", "none", "angel", "cavePerson", "darkelf", "demon", "dragon", "drow", "dwarf", "elf", "fairy", "gnome", "goblin", "halfdemon", "halfling", "highelf", "highfairy", "human", "ogre", "orc"];
-const racesDisplayName: string[] = ["Select a Generator to Start","--[Settlements and Buildings]--", "Inn's & Taverns", "Settlement", "--[Objects and Vehicles]--", "Airships", "Drinks", "Loot And Treasure", "Metals", "Magical Trees", "Ship", "--[Groups and Religions]--", "Animal Groups", "Groups", "Religion", "--[Races]--", "Angel", "Cave Person", "Dark Elf", "Demon", "Dragon", "Drow", "Dwarf", "Elf", "Fairy", "Gnome", "Goblin", "Half Demon", "Halfling", "High Elf", "High Fairy", "Human", "Ogre", "Orc"];
+const races: string[] = ["none","none", "inn", "settlement", "none", "airships", "drinks", "loot", "metals", "magicaltrees", "ship", "none", "animalgroups", "groups", "religion", "none", "aasimars", "catfolk", "fetchlings","halfelf","halforc","hobgoblin","ifrits","kobalds","oreads","ratfolk","sylphs","tengu","tians","tiefling","undines","angel", "cavePerson", "darkelf", "demon", "dragon", "drow", "dwarf", "elf", "fairy", "gnome", "goblin", "halfdemon", "halfling", "highelf", "highfairy", "human", "ogre", "orc"];
+const racesDisplayName: string[] = ["Select a Generator to Start","--[Settlements and Buildings]--", "Inn's & Taverns", "Settlement", "--[Objects and Vehicles]--", "Airships", "Drinks", "Loot And Treasure", "Metals", "Magical Trees", "Ship", "--[Groups and Religions]--", "Animal Groups", "Groups", "Religion", "--[Races]--", "Aasimars", "Catfolk", "Fetchlings","Half-Elf","Half-Orc","Hobgoblin","Ifrits","Kobalds","Oreads","Ratfolk","Sylphs","Tengu","Tians","Tiefling","Undines","Angel", "Cave Person", "Dark Elf", "Demon", "Dragon", "Drow", "Dwarf", "Elf", "Fairy", "Gnome", "Goblin", "Half Demon", "Halfling", "High Elf", "High Fairy", "Human", "Ogre", "Orc"];
+const pathfinderFilter = ["aasimars", "catfolk", "fetchlings","halfelf","halforc","hobgoblin","ifrits","kobalds","oreads","ratfolk","sylphs","tengu","tians","tiefling","undines"];
 
 let genSettings = {
     race: "angel",
@@ -54,7 +56,7 @@ export class GeneratorModal extends Modal {
          switch (raceSelected) {
              default:
                  this.generatorRaceSettings(optionsDiv, amountToGen, raceSelected);
-                break;
+                 break;
             case "ship":
                 this.generatorCustomSettings(optionsDiv, amountToGen, generateShipName);
                 break;
@@ -102,6 +104,7 @@ export class GeneratorModal extends Modal {
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         let firstName = '';
         let familyName = '';
+        let fullName = '';
         new Setting(settingsdiv)
             .setName("Male or Female?")
             .addDropdown((drop) => {
@@ -130,10 +133,15 @@ export class GeneratorModal extends Modal {
                         .onClick(()=>{
                             for (let index = 0; index < genAmount; index++) {
                             
-                                firstName = nameByRace(genSettings.race, { gender: genSettings.gender });
-                                if (genSettings.multiNames === true) {
-                                    console.log(familyNameList);
-                                    familyName = genSettings.race.includes("human") || genSettings.race.includes("dwarf") ||genSettings.race.includes("elf") ? " " + this.determineLastname(genSettings.race) : " " + nameByRace(genSettings.race, { gender: genSettings.gender });
+                                if (pathfinderFilter.includes(genSettings.race)) {
+                                    fullName = generatePathfinderName(genSettings.race, genSettings.gender, genSettings.multiNames);
+                                    
+                                } else {
+                                    firstName = nameByRace(genSettings.race, { gender: genSettings.gender });
+                                    if (genSettings.multiNames === true) {
+                                        familyName = genSettings.race.includes("human") || genSettings.race.includes("dwarf") || genSettings.race.includes("elf") ? " " + this.determineLastname(genSettings.race) : " " + nameByRace(genSettings.race, { gender: genSettings.gender });
+                                    }
+                                    fullName = firstName + familyName;
                                 }
 
                                 new Setting(settingsdiv)
@@ -142,10 +150,10 @@ export class GeneratorModal extends Modal {
                                         .setButtonText("Copy")
                                         .setCta()
                                         .onClick(() => {
-                                            this.result = firstName + familyName;
+                                            this.result = fullName;
                                             this.close();
                                             this.onSubmit(this.result);
-                                        })).setName(firstName + familyName);
+                                        })).setName(fullName);
                             }
                         }))
         
