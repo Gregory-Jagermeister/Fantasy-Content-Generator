@@ -1,11 +1,11 @@
 {
 	"id": "obsidian-fantasy-content-generator",
 	"name": "Fantasy Content Generator",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "A Fantasy Content Generator for Obsidian",
 	"author": "Obsidian",
 	"authorUrl": "https://obsidian.md",
 	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
+	"isDesktopOnly": true
 }
