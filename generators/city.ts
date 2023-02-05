@@ -1,58 +1,8 @@
 export function generateCityName() {
-    const prefixes = ["bald", "bank", "belle", "box", "bridge", "camp", "cannon", "castle", "clear", "day", "east", "edge", "ever", "fern", "forest", "fresh", "great", "knob", "knox", "mount", "morning", "new", "north", "pacific", "queens", "red", "ridge", "ring", "river", "rose", "sand", "south", "spring", "strath", "stock", "stoke", "stone", "water", "well", "west", "wood"];
-    const suffixes = ["avon","bank", "bark", "barrow", "bay", "beach", "bell", "borough","berg", "bourne", "broad", "bridge", "brook", "brough", "burgh", "burn", "bury", "by", "canyon", "caster", "chester", "cliffe", "combe", "cot, cott", "cote", "cove", "creek", "croft", "crook", "dale", "den", "din", "dine", "don", "downs", "falls", "field", "fin", "flats", "ford", "fork", "gate", "grove", "gum", "ham", "harbour", "heights", "hill", "holm", "hurst", "ing", "kirk", "land", "lake", "latch", "lea", "leigh", "ley", "marsh", "mere", "minster", "mond", "mont", "more", "ness", "park", "pilly", "pine", "point", "pond", "ridge", "river", "rock", "sett", "side", "son", "stead", "stoke", "stone", "stow", "terrace", "thorpe", "ton", "tor", "town", "vale", "valley", "view", "village", "ville", "water", "well", "wharf", "wick", "wood", "worth"];
+    const prefixes = ["camp", "castle", "east", "edge", "ever", "great", "mount", "new", "north", "red", "rose", "south", "west"];
+    const suffixes = ["wood","avon","bank", "bark", "barrow", "bay", "beach", "bell", "borough","berg", "bourne", "broad", "bridge", "brook", "brough", "burgh", "burn", "bury", "by", "canyon", "caster", "chester", "cliffe", "combe", "cot, cott", "cote", "cove", "creek", "croft", "crook", "dale", "den", "din", "dine", "don", "downs", "falls", "field", "fin", "flats", "ford", "fork", "gate", "grove", "gum", "ham", "harbour", "heights", "hill", "holm", "hurst", "ing", "kirk", "land", "lake", "latch", "lea", "leigh", "ley", "marsh", "mere", "minster", "mond", "mont", "more", "ness", "park", "pilly", "pine", "point", "pond", "ridge", "river", "rock", "sett", "side", "son", "stead", "stoke", "stone", "stow", "terrace", "thorpe", "ton", "tor", "town", "vale", "valley", "view", "village", "ville", "water", "well", "wharf", "wick", "wood", "worth"];
   
-    const syllables = ["avon","ard","aber","ac","acc","ock","an", "ar", "ast", "at","ay","y","ey", "cal", "chi", "cy", "dan", "eir", "ba", "th", "tho", "tre","tro","tr", "tri", "tr", "el", "end",
-        "ent", "est", "ian", "ic", "il", "in", "ir", "it", "kil", "kor", "ler", "lor",
-        "man", "mar", "mei", "mon", "ner", "or", "ore", "rak", "ri", "ris", "ry", "se",
-        "ser", "tor", "tos", "um", "ys", "zor", "ka", "ra", "go", "shi", "ma", "to", "zo", "ro", "lo",'ad',
-        'blanc',
-        'falc',
-        'mil',
-        'adel',
-        'boff',
-        'ferd',
-        'mung',
-        'adr',
-        'bomb',
-        'frob',
-        'od',
-        'ail',
-        'bram',
-        'fulb',
-        'oth',
-        'alb',
-        'bung',
-        'gam',
-        'sab',
-        'alm',
-        'droc',
-        'hald',
-        'sam',
-        'amb',
-        'drog',
-        'ham',
-        'seg',
-        'band',
-        'durl',
-        'hasc',
-        'serl',
-        'bard',
-        'emm',
-        'hod',
-        'tob',
-        'ben',
-        'erd',
-        'hug',
-        'wan',
-        'biff',
-        'ern',
-        'iv',
-        'wig',
-        'bild',
-        'ever',
-        'mark',
-        'wyd'];
+    const syllables = ["ab", "ac", "al", "am", "an", "ap", "apo", "ar", "arr", "as", "ast", "at", "ate", "au", "av", "ay", "aye", "ba", "be", "ben", "bo", "br", "bri", "bu", "bur", "ca", "cal", "car", "ce", "chi", "ci", "ck", "co", "com", "con", "cor", "cy", "d", "da", "dan", "dar", "de", "den", "di", "do", "dor", "du", "dur", "ed", "el", "en", "eon", "er", "es", "ey", "fa", "far", "fe", "fi", "fin", "fo", "for", "foy", "fr", "fu", "ga", "gal", "ge", "gi", "gil", "gin", "go", "gor", "gr", "gu", "ha", "han", "har", "he", "hi", "hin", "ho", "hoe", "hos", "hu", "ic", "il", "ill", "in", "ing", "ion", "ir", "irk", "is", "ja", "je", "jen", "jo", "ju", "ka", "ke", "ker", "ki", "kir", "ko", "la", "lan", "las", "le", "ler", "li", "lin", "lis", "lo", "lor", "loy", "lu", "ma", "mac", "mal", "man", "mas", "me", "mi", "mo", "mon", "mu", "mul", "mur", "na", "nal", "ne", "ni", "no", "nor", "nov", "nu", "och", "ode", "oka", "ol", "ome", "on", "op", "or", "ore", "os", "ou", "ous", "pa", "par", "pe", "pen", "pi", "po", "pol", "pon", "por", "pu", "qu", "ra", "re", "ri", "ro", "ru", "sa", "se", "si", "so", "su", "ta", "te", "ti", "to", "tu", "ul", "un", "ur", "us", "va", "ve", "vi", "vo", "vu", "wa", "we", "wi", "wo", "wu", "y", "ya", "ye", "yi", "yo", "yu", "za", "ze", "zi", "zo"];
 
     let prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
     const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];

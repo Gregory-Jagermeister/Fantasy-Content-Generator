@@ -3,9 +3,14 @@ import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
+type currency = {
+	name: string,
+	rarity: string
+}
+
 interface MyPluginSettings {
 	enableCurrency: boolean;
-	currencyTypes: object[];
+	currencyTypes: currency[];
 	currencyFrequency: number;
 }
 
@@ -171,7 +176,5 @@ class SampleSettingTab extends PluginSettingTab {
 			}
 				
 		}
-
-		//containerEl.createEl("p", {text: this.plugin.settings.currencyTypes.toString()})
 	}
 }
