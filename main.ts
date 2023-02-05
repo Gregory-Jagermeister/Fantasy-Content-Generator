@@ -3,7 +3,7 @@ import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
-type currency = {
+export type currency = {
 	name: string,
 	rarity: string
 }
