@@ -108,9 +108,6 @@ export class GeneratorModal extends Modal {
         genSettings.race = raceSelected;
         settingsdiv.innerHTML = "";
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
-        let firstName;
-        let familyName = '';
-        let fullName = '';
         new Setting(settingsdiv)
             .setName("Male or Female?")
             .addDropdown((drop) => {
@@ -138,7 +135,9 @@ export class GeneratorModal extends Modal {
                             .setCta()
                         .onClick(()=>{
                             for (let index = 0; index < genAmount; index++) {
-                            
+                                let firstName;
+                                let familyName = '';
+                                let fullName = '';
                                 if (pathfinderFilter.includes(genSettings.race)) {
                                     fullName = generatePathfinderName(genSettings.race, genSettings.gender, genSettings.multiNames);
                                     
