@@ -18,9 +18,10 @@ import MyPlugin from "main";
 import { generateInn } from "generators/inn";
 import { generatePathfinderName } from "generators/Pathfinder/pathfinderName";
 import { ISettlementDomainObject } from "fantasy-content-generator/dist/interfaces";
+import { generateMiscellaneousArtifacts } from "generators/artifact";
 
-const races: string[] = ["none","none", "inn", "settlement", "none", "airships", "drinks", "loot", "metals", "magicaltrees", "ship", "none", "animalgroups", "groups", "religion", "none", "aasimars", "catfolk", "fetchlings","halfelf","halforc","hobgoblin","ifrits","kobalds","oreads","ratfolk","sylphs","tengu","tians","tiefling","undines","angel", "cavePerson", "darkelf", "demon", "dragon", "drow", "dwarf", "elf", "fairy", "gnome", "goblin", "halfdemon", "halfling", "highelf", "highfairy", "human", "ogre", "orc"];
-const racesDisplayName: string[] = ["Select a Generator to Start","--[Settlements and Buildings]--", "Inn's & Taverns", "Settlement", "--[Objects and Vehicles]--", "Airships", "Drinks", "Loot And Treasure", "Metals", "Magical Trees", "Ship", "--[Groups and Religions]--", "Animal Groups", "Groups", "Religion", "--[Races]--", "Aasimars", "Catfolk", "Fetchlings","Half-Elf","Half-Orc","Hobgoblin","Ifrits","Kobalds","Oreads","Ratfolk","Sylphs","Tengu","Tians","Tiefling","Undines","Angel", "Cave Person", "Dark Elf", "Demon", "Dragon", "Drow", "Dwarf", "Elf", "Fairy", "Gnome", "Goblin", "Half Demon", "Halfling", "High Elf", "High Fairy", "Human", "Ogre", "Orc"];
+const races: string[] = ["none","none", "inn", "settlement", "none", "airships", "drinks","artifacts", "loot", "metals", "magicaltrees", "ship", "none", "animalgroups", "groups", "religion", "none", "aasimars", "catfolk", "fetchlings","halfelf","halforc","hobgoblin","ifrits","kobalds","oreads","ratfolk","sylphs","tengu","tians","tiefling","undines","angel", "cavePerson", "darkelf", "demon", "dragon", "drow", "dwarf", "elf", "fairy", "gnome", "goblin", "halfdemon", "halfling", "highelf", "highfairy", "human", "ogre", "orc"];
+const racesDisplayName: string[] = ["Select a Generator to Start","--[Settlements and Buildings]--", "Inn's & Taverns", "Settlement", "--[Objects and Vehicles]--", "Airships", "Drinks","Artifacts", "Loot And Treasure", "Metals", "Magical Trees", "Ship", "--[Groups and Religions]--", "Animal Groups", "Groups", "Religion", "--[Races]--", "Aasimars", "Catfolk", "Fetchlings","Half-Elf","Half-Orc","Hobgoblin","Ifrits","Kobalds","Oreads","Ratfolk","Sylphs","Tengu","Tians","Tiefling","Undines","Angel", "Cave Person", "Dark Elf", "Demon", "Dragon", "Drow", "Dwarf", "Elf", "Fairy", "Gnome", "Goblin", "Half Demon", "Halfling", "High Elf", "High Fairy", "Human", "Ogre", "Orc"];
 const pathfinderFilter = ["aasimars", "catfolk", "fetchlings","halfelf","halforc","hobgoblin","ifrits","kobalds","oreads","ratfolk","sylphs","tengu","tians","tiefling","undines"];
 
 let genSettings = {
@@ -90,6 +91,9 @@ export class GeneratorModal extends Modal {
                  break;
              case "loot":
                 this.generatorLootSettings(optionsDiv, amountToGen, generateLoot, this.plugin.settings.enableCurrency, this.plugin.settings.currencyFrequency, this.plugin.settings.currencyTypes);
+                 break;
+             case "artifacts":
+                 this.generatorCustomSettings(optionsDiv, amountToGen, generateMiscellaneousArtifacts);
                  break;
              case "none":
                 optionsDiv.innerHTML = "";
@@ -251,7 +255,7 @@ export class GeneratorModal extends Modal {
                         const shipName = generatorFunction();
                         console.log(shipName);
                         
-                        const name = generateCityName();
+                        const name = generateCityName(this.plugin.settings.citySettings);
                         
                         new Setting(settingsdiv)
                             .addButton((btn) => {

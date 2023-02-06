@@ -8,14 +8,26 @@ export type currency = {
 	rarity: string
 }
 
+export type cityGeneratorSetting = {
+	prefixArray: string[],
+	suffixArray: string[]
+}
+
 interface MyPluginSettings {
 	enableCurrency: boolean;
+	enableSettlementSettings: boolean;
+	citySettings: cityGeneratorSetting;
 	currencyTypes: currency[];
 	currencyFrequency: number;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
 	enableCurrency: false,
+	enableSettlementSettings:false,
+	citySettings: {
+		prefixArray: ["camp", "castle", "east", "edge", "ever", "great", "mount", "new", "north", "red", "rose", "south", "west"],
+		suffixArray: ["wood","avon","bank", "bark", "barrow", "bay", "beach", "bell", "borough","berg", "bourne", "broad", "bridge", "brook", "brough", "burgh", "burn", "bury", "by", "canyon", "caster", "chester", "cliffe", "combe", "cot", "cott", "cote", "cove", "creek", "croft", "crook", "dale", "den", "din", "dine", "don", "downs", "falls", "field", "fin", "flats", "ford", "fork", "gate", "grove", "gum", "ham", "harbour", "heights", "hill", "holm", "hurst", "ing", "kirk", "land", "lake", "latch", "lea", "leigh", "ley", "marsh", "mere", "minster", "mond", "mont", "more", "ness", "park", "pilly", "pine", "point", "pond", "ridge", "river", "rock", "sett", "side", "son", "stead", "stoke", "stone", "stow", "terrace", "thorpe", "ton", "tor", "town", "vale", "valley", "view", "village", "ville", "water", "well", "wharf", "wick", "wood", "worth"],
+	},
 	currencyTypes: [{
 		"name": "GP",
 		"rarity": "rare"
@@ -96,12 +108,21 @@ class SampleSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	convertStringToArray(string:string, arr:string[]): void {
+		const newString = string.replace(/\s/g, '');
+		const array = newString.split(',');
+		array.forEach((el) => {
+			arr.push(el);
+		})
+	}
+
 	display(): void {
 		const {containerEl} = this;
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'Fantasy Content Generator'});
+		containerEl.createEl('h2', { text: 'Fantasy Content Generator' });
+		containerEl.createEl("h3", { text: "Currency Settings" });
 
 		new Setting(containerEl)
 			.setName('Enable Currency for Loot Generation.')
@@ -157,11 +178,14 @@ class SampleSettingTab extends PluginSettingTab {
 					})
 			})
 
-			containerEl.createEl("h3", { text: "Added Currency" });
+			containerEl.createEl("h4", { text: "Added Currency" });
 			containerEl.createEl("p", { text: "Click remove on a currency you would like to removed" });
 
+			const foldDiv = containerEl.createEl('details',{cls: "OFCGDetails"});
+			foldDiv.createEl("summary", { text: "Currency", cls: "OFCGSummary" });
+
 			for (let index = 0; index < this.plugin.settings.currencyTypes.length; index++) {
-				new Setting(containerEl)
+				new Setting(foldDiv)
 					.setName(this.plugin.settings.currencyTypes[index].name)
 					.addButton((btn) => btn
 						.setCta()
@@ -175,6 +199,102 @@ class SampleSettingTab extends PluginSettingTab {
 				
 			}
 				
+		}
+
+		containerEl.createEl("h3", { text: "Settlement Settings" });
+
+		new Setting(containerEl)
+		.setName('Enable Custom Data for Settlement Generation.')
+		.setDesc('Want to give your own Custom settlement prefixes or suffixes this is the option for you')
+		.addToggle((toggle) => {
+			toggle.setValue(this.plugin.settings.enableSettlementSettings);
+			toggle.onChange(async (value) => {
+				this.plugin.settings.enableSettlementSettings = value;
+				this.display();
+				await this.plugin.saveSettings();
+			})
+		})
+
+		if (this.plugin.settings.enableSettlementSettings) {
+			let preText = "";
+			let sufText = "";
+			containerEl.createEl("h4", { text: "Prefixes being used" });
+			new Setting(containerEl)
+			.setName("New Prefix:")
+			.addTextArea((text) => {
+				text.onChange((value) => {
+					preText = value;
+				})
+			})
+			.addButton((btn) => {
+				btn.setCta().setButtonText("Add")
+					.onClick(async () => {
+						this.convertStringToArray(preText, this.plugin.settings.citySettings.prefixArray);
+						this.display();
+						await this.plugin.saveSettings();
+					})
+			})
+
+			
+			containerEl.createEl("p", { text: "Click 'remove' on a prefix you would like to removed" });
+
+			const foldDiv = containerEl.createEl('details',{cls: "OFCGDetails"});
+			foldDiv.createEl("summary", { text: "Prefixes", cls: "OFCGSummary" });
+
+			for (let index = 0; index < this.plugin.settings.citySettings.prefixArray.length; index++) {
+				new Setting(foldDiv)
+					.setName(this.plugin.settings.citySettings.prefixArray[index])
+					.addButton((btn) => btn
+						.setCta()
+						.setButtonText("Remove")
+						.onClick(async() => {
+							this.plugin.settings.citySettings.prefixArray.splice(index, 1);
+							this.display();
+							await this.plugin.saveSettings();
+						})
+				)
+				
+			}
+
+			containerEl.createEl('hr');
+
+			containerEl.createEl("h4", { text: "Suffixes being used" });
+			new Setting(containerEl)
+			.setName("New Suffix:")
+			.addTextArea((text) => {
+				text.onChange((value) => {
+					sufText = value;
+				})
+			})
+			.addButton((btn) => {
+				btn.setCta().setButtonText("Add")
+					.onClick(async () => {
+						this.convertStringToArray(sufText, this.plugin.settings.citySettings.suffixArray);
+						this.display();
+						await this.plugin.saveSettings();
+					})
+			})
+
+			
+			containerEl.createEl("p", { text: "Click 'remove' on a suffix you would like to removed" });
+
+			const foldDiv2 = containerEl.createEl('details',{cls: "OFCGDetails"});
+			foldDiv2.createEl("summary", { text: "Suffixes", cls: "OFCGSummary" });
+
+			for (let index = 0; index < this.plugin.settings.citySettings.suffixArray.length; index++) {
+				new Setting(foldDiv2)
+					.setName(this.plugin.settings.citySettings.suffixArray[index])
+					.addButton((btn) => btn
+						.setCta()
+						.setButtonText("Remove")
+						.onClick(async() => {
+							this.plugin.settings.citySettings.suffixArray.splice(index, 1);
+							this.display();
+							await this.plugin.saveSettings();
+						})
+				)
+				
+			}
 		}
 	}
 }
