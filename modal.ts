@@ -14,7 +14,7 @@ import { dwarfFamilyNames } from "lists/dwarvenFamilyNames";
 import * as FCG from "fantasy-content-generator";
 import { generateCityName } from "generators/city";
 import { generateLoot } from "generators/loot";
-import MyPlugin from "main";
+import MyPlugin, { innGeneratorSettings } from "main";
 import { generateInn } from "generators/inn";
 import { generatePathfinderName } from "generators/Pathfinder/pathfinderName";
 import { ISettlementDomainObject } from "fantasy-content-generator/dist/interfaces";
@@ -169,7 +169,7 @@ export class GeneratorModal extends Modal {
         
 }
 
-    generatorInnSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: () => {name:string,description:string,rumors:string[]}) {
+    generatorInnSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: (settings: innGeneratorSettings) => {name:string,description:string,rumors:string[]}) {
         settingsdiv.innerHTML = "";
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         genAmount = 1;
@@ -185,7 +185,7 @@ export class GeneratorModal extends Modal {
                     .onClick(() => {
                     for (let index = 0; index < genAmount; index++) {
                     
-                        const innName = generatorFunction();
+                        const innName = generatorFunction(this.plugin.settings.innSettings);
                         console.log(innName);
                         
                         new Setting(settingsdiv)
