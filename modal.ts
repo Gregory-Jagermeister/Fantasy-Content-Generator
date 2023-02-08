@@ -273,6 +273,7 @@ export class GeneratorModal extends Modal {
                     }));
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generatorCustomSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: (settings ?: any) => string, settings ?: any) {
         settingsdiv.innerHTML = "";
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
