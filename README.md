@@ -27,12 +27,12 @@ currently the only settings are the Currency settings, enable them in the settin
 
 ## TO-DO
 
-- Add more settings to help build custom generation settings for vaults for certain generators; Generators included in this are the
-  - loot generator
-  - Inn and Tavern generator
-  - Settlement Generator
-  - Drink Generator
-  - Group Generator.
+- ~~Add more settings to help build custom generation settings for vaults for certain generators; Generators included in this are the~~
+  - ~~loot generator~~
+  - ~~Inn and Tavern generator~~
+  - ~~Settlement Generator~~
+  - ~~Drink Generator~~
+  - ~~Group Generator.~~
 - Randomization within a note.
 - Possibly more Generation type.
 - Better UI
