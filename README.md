@@ -21,6 +21,16 @@ The Fantasy Content Generator Package (<https://www.npmjs.com/package/fantasy-co
 
 ![Example](Obsidian-Fantasy-Content-Generator-Compressed.gif)
 
+## Custom Sources
+
+In the settings of the plugin you will Find settings and options to add your own words and phrases to the generators, not all are added as of yet and there is no current plans to add more unless I get overwhelming requests for a particular one. The current Generators that can be customised are:
+
+- loot generator
+- Inn and Tavern generator
+- Settlement Generator
+- Drink Generator
+- Group Generator.
+
 ## Configuration
 
 currently the only settings are the Currency settings, enable them in the settings and add your own currency determining how frequently they appear in loot generated and what currencies you would like to include.
