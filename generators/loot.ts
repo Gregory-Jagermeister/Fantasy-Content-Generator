@@ -1,8 +1,8 @@
-import { currency } from "main";
+import { currency, lootTables } from "main";
 
-export function generateLoot(enableCurrency: boolean, currencyFrequency: number, currencyTypes: currency[]) {
-    const adjectives = ["old", "tattered", "rotten", "shiny", "polished", "rusty", "broken", "priceless", "ancient", "precious"];
-    const nouns = ["bag", "scroll", "book", "map", "key", "ring", "necklace", "potion","ball bearing", "alchemists fire", "antitoxin", "caltrop", "book", "candle", "map scroll", "chain", "climbers kit", "crowbar", "fishing tackle", "holy water", "hunting trap", "lantern", "lock", "oil", "poison", "ram portable", "spyglass", "tent", "bucket", "glass bottle", "chest", "signet ring", "sealing wax", "whetstone", "arrows", "bolt", "censer", "dice set", "dragonchess set", "flute", "glass blowers tool", "holy oil", "lute", "playing card set", "sack", "saddle", "sovereign glue", "universal solvent", "prosthetic wooden arm", "hook hand", "peg leg", "glass eye", "bag of marbles", "hatchet", "alchemists supplies", "brewers supplies", "burglars pack", "lockpicks", "calligrapher’s supplies", "carpenter's tool", "cartographers tool", "chain mail", "cooks utensil", "disguise kit", "dungeoneers pack", "entertainers pack", "explorers pack", "forgery kit", "half plate", "healers kit", "ink", "ink pen", "parchment", "shovel", "leather worker's tool", "masons tool", "navigator's tool", "net", "painters supplies", "perfume", "plate armor", "potters tool", "priests pack", "ring mail", "scale mail", "scholar's pack", "scimitar", "shield", "whistle", "smiths tool", "thieves tool", "torch", "weaver's tool", "cobblers tool", "jewelers tools", "tinkers tool", "poisoners kit", "herbalism kit", "bell", "block and tackle", "animal or pet", "traveler's clothes", "fine clothes"];
+export function generateLoot(enableCurrency: boolean, currencyFrequency: number, currencyTypes: currency[], lootTable: lootTables) {
+    const adjectives = lootTable.adj;
+    const nouns = lootTable.nouns;
     
     const ItemAmount = Math.floor(Math.random() * (5 - 1 + 1)) + 1;
 

@@ -8,6 +8,24 @@ export type currency = {
 	rarity: string
 }
 
+export type groupGenSettings = {
+	adj: string[],
+	nouns: string[],
+	nounsP: string[],
+	groupTypes: string[],
+	singleDescriptors : string[]
+}
+
+export type lootTables = {
+	adj: string[]
+	nouns: string[];
+}
+
+export type drinkGeneratorSettings = {
+	adj : string[],
+	nouns : string[],
+}
+
 export type cityGeneratorSetting = {
 	prefixArray: string[],
 	suffixArray: string[]
@@ -27,18 +45,21 @@ interface MyPluginSettings {
 	currencyTypes: currency[];
 	currencyFrequency: number;
 	innSettings: innGeneratorSettings;
+	drinkSettings: drinkGeneratorSettings;
+	lootSettings: lootTables;
+	groupSettings: groupGenSettings;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
 	enableCurrency: false,
 	citySettings: {
 		prefixArray: ["camp", "castle", "east", "edge", "ever", "great", "mount", "new", "north", "red", "rose", "south", "west"],
-		suffixArray: ["wood","avon","bank", "bark", "barrow", "bay", "beach", "bell", "borough","berg", "bourne", "broad", "bridge", "brook", "brough", "burgh", "burn", "bury", "by", "canyon", "caster", "chester", "cliffe", "combe", "cot", "cott", "cote", "cove", "creek", "croft", "crook", "dale", "den", "din", "dine", "don", "downs", "falls", "field", "fin", "flats", "ford", "fork", "gate", "grove", "gum", "ham", "harbour", "heights", "hill", "holm", "hurst", "ing", "kirk", "land", "lake", "latch", "lea", "leigh", "ley", "marsh", "mere", "minster", "mond", "mont", "more", "ness", "park", "pilly", "pine", "point", "pond", "ridge", "river", "rock", "sett", "side", "son", "stead", "stoke", "stone", "stow", "terrace", "thorpe", "ton", "tor", "town", "vale", "valley", "view", "village", "ville", "water", "well", "wharf", "wick", "wood", "worth"],
+		suffixArray: ["wood", "avon", "bank", "bark", "barrow", "bay", "beach", "bell", "borough", "berg", "bourne", "broad", "bridge", "brook", "brough", "burgh", "burn", "bury", "by", "canyon", "caster", "chester", "cliffe", "combe", "cot", "cott", "cote", "cove", "creek", "croft", "crook", "dale", "den", "din", "dine", "don", "downs", "falls", "field", "fin", "flats", "ford", "fork", "gate", "grove", "gum", "ham", "harbour", "heights", "hill", "holm", "hurst", "ing", "kirk", "land", "lake", "latch", "lea", "leigh", "ley", "marsh", "mere", "minster", "mond", "mont", "more", "ness", "park", "pilly", "pine", "point", "pond", "ridge", "river", "rock", "sett", "side", "son", "stead", "stoke", "stone", "stow", "terrace", "thorpe", "ton", "tor", "town", "vale", "valley", "view", "village", "ville", "water", "well", "wharf", "wick", "wood", "worth"],
 	},
 	innSettings: {
 		prefixes: ["The Rusty", "The Cosy", "The Grand", "The Quiet", "The Friendly", "Bashur's", "Harmony", "Harmonic", "Bald Faced", "Black", "Grey", "Silver", "White", "Blue", "Purple", "Green", "The Ugly", "The Pretty", "Ye Ol' Fighting", "The Drunk", "One", "Two", "Three", "Four", "Five", "Busta", "The Terrified"],
 		innType: ["Inn", "Lodge", "Tavern", "Rest", "Stop"],
-		nouns: ["Phoenix", "Centaur", "Dragon","Selkie", "Griffin", "Bandersnatch", "Mermaid", "Werewolf", "Dryad","Golem", "Bugbear", "Goblin", "Tiger", "Cat", "Warrior", "Wizard", "Drop Bear", "Bear", "Lagoon", "Bunyip", "Rat King", "King's", "Automaton", "Beach", "Reaper", "Grim", "Ogre", "Skeleton", "Ghost"],
+		nouns: ["Phoenix", "Centaur", "Dragon", "Selkie", "Griffin", "Bandersnatch", "Mermaid", "Werewolf", "Dryad", "Golem", "Bugbear", "Goblin", "Tiger", "Cat", "Warrior", "Wizard", "Drop Bear", "Bear", "Lagoon", "Bunyip", "Rat King", "King's", "Automaton", "Beach", "Reaper", "Grim", "Ogre", "Skeleton", "Ghost"],
 		desc: [
 			"located in the heart of the city, surrounded by bustling marketplaces and busy streets.",
 			"nestled in a peaceful and serene countryside, with picturesque views of rolling hills and sprawling fields.",
@@ -167,7 +188,22 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 		"name": "PP",
 		"rarity": "rarest"
 	}],
-	currencyFrequency: 50
+	currencyFrequency: 50,
+	drinkSettings: {
+		adj: ["Almond", "Amazing", "Ancient", "Angel", "Angelic", "Apple", "Apricot", "Arctic", "Aromatic", "Autumn", "Avocado", "Balanced", "Banana", "Basil", "Bay Leaf", "Beautiful", "Beetroot", "Black", "Blue", "Blueberry", "Boiled", "Brilliant", "Brown", "Brutal", "Burning", "Calm", "Capital", "Caramel", "Catnip", "Cherry", "Cherry Blossom", "Chestnut", "Chilled", "Chilli", "Cinnamon", "Clouded", "Cloudy", "Coconut", "Cool", "Coriander", "Cosmic", "Cranberry", "Crazy", "Crimson", "Cucumber", "Demon", "Demonic", "Dire", "Eastern", "Easy", "Electric", "Elemental", "Evil", "Extreme", "Fainting", "Fallen", "Fancy", "Fantasy", "Fast", "Final", "First", "Flaming", "Flower", "Flying", "Forest", "Fresh", "Frosted", "Frozen", "Fruity", "Garlic", "Gentle", "Ginger", "Gingerroot", "Gleaming", "Glowing", "Grape", "Grapefruit", "Green", "Hazelnut", "High", "Holy", "Honest", "Honey", "Hot", "Hushed", "Icy", "Imaginary", "Incredible", "Infinite", "Innocent", "Insane", "Insanity", "Jasmine", "Kiwi", "Lavender", "Lavish", "Lemon", "Lemonade", "Lemongrass", "Lemony", "Lime", "Low", "Lucky", "Mad", "Mango", "Melon", "Mild", "Milk", "Milky", "Mint", "Minty", "Molten", "Mountain", "Mystic", "Nasty", "Nimble", "Noble", "Northern", "Noxious", "Numb", "Nutmeg", "Nutty", "Oak", "Oaken", "Oblivious", "Obvious", "Orange", "Oregano", "Palm", "Paranoid", "Passion Fruit", "Peacan", "Peanut", "Pear", "Peppermint", "Perfect", "Pineapple", "Pink", "Potato", "Precious", "Pure", "Rainbow", "Red", "River", "Rose", "Rose Petal", "Rosemary", "Rotten", "Rough", "Rude", "Rushed", "Saffron", "Salt 'n Pepper", "Salty", "Sanguine", "Savage", "Scented", "Secret", "Silent", "Smooth", "Southern", "Spearmint", "Spiced", "Spicy", "Spirit", "Spring", "Stale", "Steamy", "Sticky", "Strawberry", "Sugar", "Sugary", "Summer", "Surprised", "Sweet", "Tarragon", "Thyme", "Tiny", "Tomato", "Tropic", "Tropical", "Twisting", "Ultimate", "Unholy", "Universal", "Unlucky", "Vanilla", "Vanillabean", "Vibrant", "Warm", "Wasabi", "Watermelon", "Western", "Wet", "Whimsical", "Whipped", "White", "Wicked", "Wild", "Willow", "Winged", "Winter", "Wonderful", "Wonderous", "Yellow", "Spicy", "Fruity", "Sour", "Sweet", "Smooth", "Bitter", "Refreshing", "Amigo", "Arrow", "Ball", "Barrage", "Bear", "Blast", "Blaze", "Bliss", "Blitz", "Blizzard", "Blood", "Blossom", "Bolt", "Bomb", "Breeze", "Bruiser", "Bubble", "Bull", "Burst", "Buzzer", "Cooler", "Crash", "Critter", "Crush", "Crusher", "Crystal", "Delight", "Dog", "Double", "Drop", "Duke", "Dutchess", "Earthquake", "Eclipse", "Eight", "Enigma", "Eye", "Five", "Flash", "Fluff", "Fluffy", "Four", "Freedom", "Fury", "Giant", "Gloom", "Grog", "Heaven", "Hell", "Hopper", "Horn", "Horror", "Hound", "Howler", "Infusion", "Jam", "Joke", "Joker", "Joy", "Killer", "Kiss", "Kisses", "Knight", "Lady", "Lagoon", "Light", "Lion", "Lord", "Lotus", "Lover", "Major", "Minor", "Mix", "Monsoon", "Moonshine", "Mud", "Murder", "Nectar", "Night", "Nightfall", "Orb", "Paradise", "Paralyzer", "Parody", "Passion", "Pearl", "Pecker", "Petal", "Phantom", "Plus", "Pop", "Puff", "Punch", "Rage", "Riddle", "Roar", "Rumble", "Rush", "Score", "Scream", "Seven", "Shadow", "Shield", "Shot", "Shrub", "Silence", "Sip", "Six", "Sizzle", "Slammer", "Slap", "Slapper", "Sling", "Slingshot", "Slush", "Smash", "Smooch", "Snake", "Snowball", "Sour", "Special", "Squeeze", "Stardust", "Starlight", "Stinger", "Storm", "Striker", "Sunrise", "Sunset", "Surge", "Talon", "Teaser", "Temper", "Tempest", "Thrill", "Thriller", "Thunder", "Ticker", "Tickle", "Tonic", "Tornado", "Torrent", "Touch", "Tremor", "Twilight", "Twister", "Velour", "Velvet", "Vengeance", "Volcano", "Volley", "Wacker", "Walk", "Walker", "Wave", "Whisper", "Whistle", "Wink", "Wonder", "Zombie"],
+		nouns: ["Cocktail", "Smoothie", "Shake", "Juice", "Iced Tea", "Lemonade", "Soda", "Ale", "Brandy", "Tea", "Tea", "Sherry", "Brew", "Cappuchino", "Cider", "Coffee", "Cognac", "Dark Ale", "Dark Beer", "Drink", "Espresso", "Gin", "Java", "Lager", "Light Ale", "Light Beer", "Mead", "Mocha", "Red Wine", "Rum", "Sake", "Tea", "Tonic", "Vodka", "Whiskey", "White Wine", "Wine"]
+	},
+	lootSettings: {
+		adj: ["old", "tattered", "rotten", "shiny", "polished", "rusty", "broken", "priceless", "ancient", "precious"],
+		nouns: ["bag", "scroll", "book", "map", "key", "ring", "necklace", "potion", "ball bearing", "alchemists fire", "antitoxin", "caltrop", "book", "candle", "map scroll", "chain", "climbers kit", "crowbar", "fishing tackle", "holy water", "hunting trap", "lantern", "lock", "oil", "poison", "ram portable", "spyglass", "tent", "bucket", "glass bottle", "chest", "signet ring", "sealing wax", "whetstone", "arrows", "bolt", "censer", "dice set", "dragonchess set", "flute", "glass blowers tool", "holy oil", "lute", "playing card set", "sack", "saddle", "sovereign glue", "universal solvent", "prosthetic wooden arm", "hook hand", "peg leg", "glass eye", "bag of marbles", "hatchet", "alchemists supplies", "brewers supplies", "burglars pack", "lockpicks", "calligrapher’s supplies", "carpenter's tool", "cartographers tool", "chain mail", "cooks utensil", "disguise kit", "dungeoneers pack", "entertainers pack", "explorers pack", "forgery kit", "half plate", "healers kit", "ink", "ink pen", "parchment", "shovel", "leather worker's tool", "masons tool", "navigator's tool", "net", "painters supplies", "perfume", "plate armor", "potters tool", "priests pack", "ring mail", "scale mail", "scholar's pack", "scimitar", "shield", "whistle", "smiths tool", "thieves tool", "torch", "weaver's tool", "cobblers tool", "jewelers tools", "tinkers tool", "poisoners kit", "herbalism kit", "bell", "block and tackle", "animal or pet", "traveler's clothes", "fine clothes"]
+	},
+	groupSettings: {
+		adj: ["azure", "black", "blue", "brass", "bronze", "brown", "cardinal", "cobalt", "copper", "crimson", "crystal", "demon", "denim", "diamond", "ebony", "electric", "emerald", "fire", "flame", "gold", "green", "grey", "grizzly", "ice", "ivory", "jade", "onyx", "orange", "red", "royal", "ruby", "sanguine", "sapphire", "scarlet", "thunder", "violet", "white", "yellow", "", "", "", "", "", "", "", "", "", "", "", ""],
+		nouns: ["alien", "alligator", "angel", "badger", "banner", "bat", "bear", "blood", "blooddrop", "blossom", "boar", "bull", "bulldog", "butterfly", "chainsaw", "cobra", "coyote", "crocodile", "cross", "crow", "death", "demon", "devil", "dragon", "dragonfly", "dragontooth", "dwarf", "eagle", "elephant", "enigma", "fang", "forsaken", "ghost", "gorilla", "hand", "hog", "honey badger", "horn", "jackal", "knife", "knuckle", "leopard", "lily", "lion", "liontooth", "mamba", "mammoth", "monkey", "moth", "needle", "owl", "phantom", "pygmy", "pincer", "pistol", "rat", "raven", "ravenclaw", "razor", "reaper", "rebel", "rider", "rose", "saber", "sabortooth", "serpent", "shark", "sharkfin", "sharktooth", "skeleton", "skull", "snake", "spider", "sword", "tear", "thorn", "tiger", "toad", "troll", "undead", "viper", "vulture", "warthog", "water", "wolf", "wolverine"],
+		nounsP: ["aliens", "alligators", "angels", "badgers", "bats", "bears", "blooddrops", "bloods", "blossoms", "boars", "bulldogs", "bulls", "butterflies", "chainsaws", "cobras", "coyotes", "crocs", "crosses", "crows", "demons", "devils", "dragonflies", "dragons", "dwarves", "eagles", "elephants", "enigmas", "fangs", "forsaken", "ghosts", "gorillas", "growlers", "hogs", "honey badgers", "horns", "jackals", "knives", "knuckles", "leopards", "lilies", "lions", "mambas", "mammoths", "monkeys", "moths", "needles", "owls", "phantoms", "pigmies", "pillagers", "pincers", "pistols", "plunderers", "rats", "ravenclaws", "ravens", "razors", "reapers", "rebels", "riders", "roses", "sabors", "seals", "serpents", "sharkfins", "sharks", "sharkteeth", "skeletons", "skulls", "slicers", "snakes", "spiders", "swords", "takers", "tears", "thorns", "tigers", "toads", "trolls", "undead", "vipers", "vultures", "warthogs", "wolverines", "wolves"],
+		groupTypes: ["association", "band", "brotherhood", "clan", "company", "crew", "gang", "posse", "riders", "soldiers", "squad", "syndicate", "tribe"],
+		singleDescriptors: ["abandoned", "anarchists", "anonymous", "chargers", "damnation", "day walkers", "dead eyes", "destroyers", "disciples", "doom bringers", "dreamers", "liberated", "liberation front", "empty eyes", "eternals", "faceless ones", "fallen angels", "forsaken", "grim reapers", "hopeless", "hopeless ones", "hunters", "idealists", "immortals", "invincibles", "invisibles", "kings", "life takers", "loners", "men of limbo", "men of the night", "women of limbo", "women of the night", "mob", "nameless", "night stalkers", "poison ivies", "purgatory", "ravagers", "risen demons", "salvation", "shadows", "silence", "silent death", "silent footsteps", "soul stealers", "soulless ones", "united front", "unseen", "untamed", "voiceless ones", "void", "whisperers", "wild ones", "wildlings"]
+	}
 }
 
 export default class MyPlugin extends Plugin {
@@ -500,8 +536,56 @@ class SampleSettingTab extends PluginSettingTab {
 
 		// END INN'S / TAVERN SETTINGS //
 
-		
+		// DRINK SETTINGS //
 
+		containerEl.createEl("h2", { text: "Drink Generator Settings" });
+
+		const drinkNounText = "";
+		const drinkAdjText = "";
+
+		containerEl.createEl("h4", { text: "Adjectives being used" });
+		this.createSettingsBlock(containerEl, drinkAdjText, this.plugin.settings.drinkSettings.adj, "Adjectives");
+
+		containerEl.createEl("h4", { text: "Nouns being used" });
+		this.createSettingsBlock(containerEl, drinkNounText, this.plugin.settings.drinkSettings.nouns, "Nouns");
+
+		// LOOT SETTINGS //
+
+		containerEl.createEl("h2", { text: "Loot Generator Settings" });
 		
+		const lootNounText = "";
+		const lootAdjText = "";
+
+		containerEl.createEl("h4", { text: "Adjectives being used" });
+		this.createSettingsBlock(containerEl, lootAdjText, this.plugin.settings.drinkSettings.adj, "Adjectives");
+
+		containerEl.createEl("h4", { text: "Nouns being used" });
+		this.createSettingsBlock(containerEl, lootNounText, this.plugin.settings.drinkSettings.nouns, "Nouns");
+
+		// GROUP SETTINGS //
+
+		containerEl.createEl("h2", { text: "Group Generator Settings" });
+
+		const groupAdjectives =''
+		const groupNouns = ''
+		const groupNounsPlural = ''
+		const groupTypes = ''
+		const groupSingleDescriptors = ''
+
+		containerEl.createEl("h4", { text: "Adjectives being used" });
+		this.createSettingsBlock(containerEl, groupAdjectives, this.plugin.settings.groupSettings.adj, "Adjectives");
+
+		containerEl.createEl("h4", { text: "Nouns being used" });
+		this.createSettingsBlock(containerEl, groupNouns, this.plugin.settings.groupSettings.nouns, "Nouns");
+
+		containerEl.createEl("h4", { text: "Plural Nouns being used" });
+		this.createSettingsBlock(containerEl, groupNounsPlural, this.plugin.settings.groupSettings.nounsP, "Plural Nouns");
+
+		containerEl.createEl("h4", { text: "Group Types being used" });
+		this.createSettingsBlock(containerEl, groupTypes, this.plugin.settings.groupSettings.groupTypes, "Types");
+
+		containerEl.createEl("h4", { text: "Single Descriptors being used" });
+		this.createSettingsBlock(containerEl, groupSingleDescriptors, this.plugin.settings.groupSettings.singleDescriptors, "Descriptors");
+	
 	}
 }

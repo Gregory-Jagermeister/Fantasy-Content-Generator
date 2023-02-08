@@ -14,7 +14,7 @@ import { dwarfFamilyNames } from "lists/dwarvenFamilyNames";
 import * as FCG from "fantasy-content-generator";
 import { generateCityName } from "generators/city";
 import { generateLoot } from "generators/loot";
-import MyPlugin, { innGeneratorSettings } from "main";
+import MyPlugin, { innGeneratorSettings, lootTables } from "main";
 import { generateInn } from "generators/inn";
 import { generatePathfinderName } from "generators/Pathfinder/pathfinderName";
 import { ISettlementDomainObject } from "fantasy-content-generator/dist/interfaces";
@@ -72,10 +72,10 @@ export class GeneratorModal extends Modal {
                 this.generatorCustomSettings(optionsDiv, amountToGen, generatorAirships);
                 break;
             case "drinks":
-                this.generatorCustomSettings(optionsDiv, amountToGen, generatorDrinks);
+                this.generatorCustomSettings(optionsDiv, amountToGen, generatorDrinks, this.plugin.settings.drinkSettings);
                 break;
             case "groups":
-                this.generatorCustomSettings(optionsDiv, amountToGen, generatorGroups);      
+                this.generatorCustomSettings(optionsDiv, amountToGen, generatorGroups, this.plugin.settings.groupSettings);      
                 break;
             case "animalgroups":
                 this.generatorCustomSettings(optionsDiv, amountToGen, generatorAnimal_groups);
@@ -203,7 +203,7 @@ export class GeneratorModal extends Modal {
                     }));
     }
     
-    generatorLootSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: (enableCurrency:boolean, currencyFrequency: number, currencyTypes: object[]) => string, enableCurrency:boolean, currencyFrequency: number, currencyTypes: object[]) {
+    generatorLootSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: (enableCurrency:boolean, currencyFrequency: number, currencyTypes: object[], lootTable: lootTables) => string, enableCurrency:boolean, currencyFrequency: number, currencyTypes: object[]) {
         settingsdiv.innerHTML = "";
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         genAmount = 1;
@@ -219,7 +219,7 @@ export class GeneratorModal extends Modal {
                     .onClick(() => {
                     for (let index = 0; index < genAmount; index++) {
                     
-                    const shipName = generatorFunction(enableCurrency, currencyFrequency, currencyTypes);
+                    const shipName = generatorFunction(enableCurrency, currencyFrequency, currencyTypes, this.plugin.settings.lootSettings);
                     
                         new Setting(settingsdiv)
                             .addButton((btn) => {
@@ -273,7 +273,7 @@ export class GeneratorModal extends Modal {
                     }));
     }
 
-    generatorCustomSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: () => string) {
+    generatorCustomSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: (settings ?: any) => string, settings ?: any) {
         settingsdiv.innerHTML = "";
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         genAmount = 1;
@@ -288,8 +288,14 @@ export class GeneratorModal extends Modal {
                     .setCta()
                     .onClick(() => {
                     for (let index = 0; index < genAmount; index++) {
-                    
-                    const shipName = generatorFunction();
+                        let shipName = '';
+                    if (settings !== undefined) {
+                        shipName = generatorFunction(settings);
+                    } else {
+                        shipName = generatorFunction();
+                    }
+
+                   
                     
                         new Setting(settingsdiv)
                             .addButton((btn) => {
