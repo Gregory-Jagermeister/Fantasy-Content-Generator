@@ -218,9 +218,15 @@ export default class MyPlugin extends Plugin {
 			//this.activateView();
 			new GeneratorModal(this.app, (result) => {
 				const copyContent = async () => {
+					console.log();
+					
 					try {
-						await navigator.clipboard.writeText(result);
-						new Notice(`${result} was copied to the clipboard.`);
+						if (result instanceof Error) {
+							new Notice(`${result}`);
+						} else {
+							await navigator.clipboard.writeText(result);
+							new Notice(`${result} was copied to the clipboard.`);
+						}
 					} catch (err) {
 						console.error('Failed to copy: ', err);
 						new Notice("Failed to copy, Check error in console.");

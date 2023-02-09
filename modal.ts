@@ -31,10 +31,10 @@ let genSettings = {
 }
 
 export class GeneratorModal extends Modal {
-    result: string;
-    onSubmit: (result: string) => void;
+    result: string | Error;
+    onSubmit: (result: string | Error) => void;
     plugin: MyPlugin;
-    constructor(app: App, onSubmit: (result: string) => void, plugin: MyPlugin) {
+    constructor(app: App, onSubmit: (result: string | Error) => void, plugin: MyPlugin) {
         super(app);
         this.onSubmit = onSubmit;
         this.plugin = plugin;
@@ -128,44 +128,62 @@ export class GeneratorModal extends Modal {
                     genSettings.multiNames = value;
                 })
             })
+        let fullCopy = '';
         new Setting(settingsdiv)
             .setName("Amount")
             .setDesc("How Many Records to Generate")
             .addText((text) => {
                 text.onChange((value) => genAmount = Number(value));
-                })
-                    .addButton((btn) =>
-                        btn.setButtonText("Generate")
-                            .setCta()
-                        .onClick(()=>{
-                            for (let index = 0; index < genAmount; index++) {
-                                let firstName;
-                                let familyName = '';
-                                let fullName = '';
-                                if (pathfinderFilter.includes(genSettings.race)) {
-                                    fullName = generatePathfinderName(genSettings.race, genSettings.gender, genSettings.multiNames);
-                                    
-                                } else {
-                                    type gender = 'male' | 'female' | undefined;
-                                    firstName = nameByRace(genSettings.race, { gender: genSettings.gender as gender});
-                                    if (genSettings.multiNames === true) {
-                                        familyName = genSettings.race.includes("human") || genSettings.race.includes("dwarf") || genSettings.race.includes("elf") ? " " + this.determineLastname(genSettings.race) : " " + nameByRace(genSettings.race, { gender: genSettings.gender as gender});
-                                    }
-                                    fullName = firstName + familyName;
+            })
+            .addButton((btn) =>
+                btn.setButtonText("Generate")
+                    .setCta()
+                    .onClick(() => {
+                               
+                        for (let index = 0; index < genAmount; index++) {
+                            let firstName;
+                            let familyName = '';
+                            let fullName = '';
+                            if (pathfinderFilter.includes(genSettings.race)) {
+                                fullName = generatePathfinderName(genSettings.race, genSettings.gender, genSettings.multiNames);
+                                        
+                            } else {
+                                type gender = 'male' | 'female' | undefined;
+                                firstName = nameByRace(genSettings.race, { gender: genSettings.gender as gender });
+                                if (genSettings.multiNames === true) {
+                                    familyName = genSettings.race.includes("human") || genSettings.race.includes("dwarf") || genSettings.race.includes("elf") ? " " + this.determineLastname(genSettings.race) : " " + nameByRace(genSettings.race, { gender: genSettings.gender as gender });
                                 }
-
-                                new Setting(settingsdiv)
-                                .addButton((btn) =>
-                                    btn
-                                        .setButtonText("Copy")
-                                        .setCta()
-                                        .onClick(() => {
-                                            this.result = fullName;
-                                            this.close();
-                                            this.onSubmit(this.result);
-                                        })).setName(fullName);
+                                fullName = firstName + familyName;
                             }
-                        }))
+
+                            new Setting(settingsdiv).addToggle((toggle) => {
+                                toggle.onChange((value) => {
+                                    if (value === true) {
+                                        fullCopy += fullName + "\n";
+                                    } else {
+                                        const fullCIndex = fullCopy.indexOf(fullName);
+                                        fullCopy = fullCIndex === -1 ? fullCopy : fullCopy.slice(0, fullCIndex) + fullCopy.slice(fullCIndex + fullName.length);
+                                    }
+                                })
+                                    .setValue(true);
+                            }).setName(fullName);
+
+                        }
+                                
+                    }))
+            .addButton((btn) =>
+            btn
+                .setButtonText("Copy")
+                .setCta()
+                    .onClick(() => {
+                    if (fullCopy === '') {
+                        this.result = new Error("Nothing Was Selected to Copy.");
+                    } else {
+                        this.result = fullCopy;
+                    }     
+                    this.close();
+                    this.onSubmit(this.result);
+                }));
         
 }
 
@@ -173,6 +191,7 @@ export class GeneratorModal extends Modal {
         settingsdiv.innerHTML = "";
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         genAmount = 1;
+        let innList = '';
         new Setting(settingsdiv)
         .setName("Amount to Generate")
         .addText((text) => {
@@ -180,33 +199,47 @@ export class GeneratorModal extends Modal {
         })
             .addButton((btn) =>
                 btn
-                    .setButtonText("Generate Names")
+                    .setButtonText("Generate")
                     .setCta()
                     .onClick(() => {
                     for (let index = 0; index < genAmount; index++) {
                     
                         const innName = generatorFunction(this.plugin.settings.innSettings);
-                        console.log(innName);
                         
-                        new Setting(settingsdiv)
-                            .addButton((btn) => {
-                                btn.setButtonText("Copy to Clipboard")
-                                    .setCta()
-                                    .onClick(() => {
-                                        this.result = `Name: ${innName.name}\nDescription: ${innName.description}\nRumors: ${innName.rumors.toString()}`;
-                                        this.close()
-                                        this.onSubmit(this.result);
-                                    })
-                            }).setName(innName.name);
+                        new Setting(settingsdiv).addToggle((toggle) => {
+                            toggle.onChange((value) => {
+                                const innString = innName.name + "\nDescription: " + innName.description + "\nRumors: " + innName.rumors;
+                                if (value === true) {    
+                                    innList += innString + "\n";
+                                } else {
+                                    const fullCIndex = innList.indexOf(innString);
+                                    innList = fullCIndex === -1 ? innList : innList.slice(0, fullCIndex) + innList.slice(fullCIndex + innString.length);
+                                }
+                            })
+                                .setValue(true);
+                        }).setName(innName.name);
                     
                     }
-                    }));
+                    })).addButton((btn) =>
+                    btn
+                        .setButtonText("Copy")
+                        .setCta()
+                            .onClick(() => {
+                            if (innList === '') {
+                                this.result = new Error("Nothing Was Selected to Copy.");
+                            } else {
+                                this.result = innList;
+                            }     
+                            this.close();
+                            this.onSubmit(this.result);
+                        }));
     }
     
     generatorLootSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: (enableCurrency:boolean, currencyFrequency: number, currencyTypes: object[], lootTable: lootTables) => string, enableCurrency:boolean, currencyFrequency: number, currencyTypes: object[]) {
         settingsdiv.innerHTML = "";
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         genAmount = 1;
+        let list = '';
         new Setting(settingsdiv)
         .setName("Amount to Generate")
         .addText((text) => {
@@ -214,25 +247,38 @@ export class GeneratorModal extends Modal {
         })
             .addButton((btn) =>
                 btn
-                    .setButtonText("Generate Names")
+                    .setButtonText("Generate")
                     .setCta()
                     .onClick(() => {
                     for (let index = 0; index < genAmount; index++) {
                     
                     const shipName = generatorFunction(enableCurrency, currencyFrequency, currencyTypes, this.plugin.settings.lootSettings);
                     
-                        new Setting(settingsdiv)
-                            .addButton((btn) => {
-                                btn.setButtonText("Copy to Clipboard")
-                                    .setCta()
-                                    .onClick(() => {
-                                        this.result = shipName;
-                                        this.close()
-                                        this.onSubmit(this.result);
-                                    })
-                            }).setName(shipName);
-                    
-                    }
+                    new Setting(settingsdiv).addToggle((toggle) => {
+                        toggle.onChange((value) => {
+                            if (value === true) {    
+                                list += shipName + "\n";
+                            } else {
+                                const fullCIndex = list.indexOf(shipName);
+                                list = fullCIndex === -1 ? list : list.slice(0, fullCIndex) + list.slice(fullCIndex + shipName.length);
+                            }
+                        })
+                            .setValue(true);
+                    }).setName(shipName);
+                
+                }
+                })).addButton((btn) =>
+                btn
+                    .setButtonText("Copy")
+                    .setCta()
+                        .onClick(() => {
+                        if (list === '') {
+                            this.result = new Error("Nothing Was Selected to Copy.");
+                        } else {
+                            this.result = list;
+                        }     
+                        this.close();
+                        this.onSubmit(this.result);
                     }));
     }
 
@@ -240,6 +286,7 @@ export class GeneratorModal extends Modal {
         settingsdiv.innerHTML = "";
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         genAmount = 1;
+        let list = '';
         new Setting(settingsdiv)
             .setName("Amount to Generate")
         .addText((text) => {
@@ -247,7 +294,7 @@ export class GeneratorModal extends Modal {
         })
             .addButton((btn) =>
                 btn
-                    .setButtonText("Generate Names")
+                    .setButtonText("Generate")
                     .setCta()
                     .onClick(() => {
                     for (let index = 0; index < genAmount; index++) {
@@ -256,21 +303,33 @@ export class GeneratorModal extends Modal {
                         console.log(shipName);
                         
                         const name = generateCityName(this.plugin.settings.citySettings);
-                        
-                        new Setting(settingsdiv)
-                            .addButton((btn) => {
-                                btn.setButtonText("Copy to Clipboard")
-                                    .setCta()
-                                    .onClick(() => {
-                                        
-                                        this.result = "Name: " + name + "\nPopulation: " + shipName.population +"\nType: "+ shipName.type;
-                                        this.close()
-                                        this.onSubmit(this.result);
-                                    })
-                            }).setName(name + ", Population: " + shipName.population);
+                        const settlementString = "Name: " + name + "\nPopulation: " + shipName.population +"\nType: "+ this.formatString(shipName.type);
+                        new Setting(settingsdiv).addToggle((toggle) => {
+                            toggle.onChange((value) => {
+                                if (value === true) {    
+                                    list += settlementString + "\n\n";
+                                } else {
+                                    const fullCIndex = list.indexOf(settlementString +"\n");
+                                    list = fullCIndex === -1 ? list : list.slice(0, fullCIndex) + list.slice(fullCIndex + settlementString.length);
+                                }
+                            })
+                                .setValue(true);
+                        }).setName(name);
                     
                     }
-                    }));
+                    })).addButton((btn) =>
+                    btn
+                        .setButtonText("Copy")
+                        .setCta()
+                            .onClick(() => {
+                            if (list === '') {
+                                this.result = new Error("Nothing Was Selected to Copy.");
+                            } else {
+                                this.result = this.formatStringList(list);
+                            }     
+                            this.close();
+                            this.onSubmit(this.result);
+                        }));
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -278,6 +337,7 @@ export class GeneratorModal extends Modal {
         settingsdiv.innerHTML = "";
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         genAmount = 1;
+        let list = "";
         new Setting(settingsdiv)
         .setName("Amount to Generate")
         .addText((text) => {
@@ -285,7 +345,7 @@ export class GeneratorModal extends Modal {
         })
             .addButton((btn) =>
                 btn
-                    .setButtonText("Generate Names")
+                    .setButtonText("Generate")
                     .setCta()
                     .onClick(() => {
                     for (let index = 0; index < genAmount; index++) {
@@ -295,21 +355,32 @@ export class GeneratorModal extends Modal {
                     } else {
                         shipName = generatorFunction();
                     }
-
-                   
-                    
-                        new Setting(settingsdiv)
-                            .addButton((btn) => {
-                                btn.setButtonText("Copy to Clipboard")
-                                    .setCta()
-                                    .onClick(() => {
-                                        this.result = shipName;
-                                        this.close()
-                                        this.onSubmit(this.result);
-                                    })
-                            }).setName(shipName);
-                    
-                    }
+                    new Setting(settingsdiv).addToggle((toggle) => {
+                        toggle.onChange((value) => {
+                            if (value === true) {    
+                                list += shipName + "\n\n";
+                            } else {
+                                const fullCIndex = list.indexOf(shipName);
+                                list = fullCIndex === -1 ? list : list.slice(0, fullCIndex) + list.slice(fullCIndex + shipName.length);
+                            }
+                        })
+                            .setValue(true);
+                    }).setName(shipName);
+                
+                }
+                })).addButton((btn) =>
+                btn
+                    .setButtonText("Copy")
+                    .setCta()
+                        .onClick(() => {
+                        if (list === '') {
+                            this.result = new Error("Nothing Was Selected to Copy.");
+                        } else {
+                            this.result = this.formatStringList(list);
+                            
+                        }     
+                        this.close();
+                        this.onSubmit(this.result);
                     }));
   }
     
@@ -334,6 +405,14 @@ export class GeneratorModal extends Modal {
   randomItemFromArray(array:string[]) {
     const randomIndex = Math.floor(Math.random() * array.length);
     return array[randomIndex];
+  }
+
+    formatStringList(input: string) {
+      return input.split('\n').filter(s => s.trim() !== '').join('\n\n');
+  }
+    
+  formatString(str:string) {
+    return str.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
   }
     
   onClose() {
