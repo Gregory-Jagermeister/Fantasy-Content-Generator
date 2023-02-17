@@ -1,7 +1,118 @@
 import { GeneratorModal } from 'modal';
-import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, MarkdownView, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { AutoComplete } from "editor/AutoComplete";
 
-// Remember to rename these classes and interfaces!
+// Define the list of possible options
+const possibleOptions = [
+	'Gen-ElfMale',
+	'Gen-ElfMaleLastname',
+	'Gen-ElfFemale',
+	'Gen-ElfFemaleLastname',
+	'Gen-Orc',
+	'Gen-OrcLastname',
+	'Gen-DwarfMale',
+	'Gen-DwarfMaleLastname',
+	'Gen-DwarfFemale',
+	'Gen-DwarfFemaleLastname',
+	'Gen-HumanMale',
+	'Gen-HumanFemale',
+	'Gen-HumanMaleLastname',
+	'Gen-HumanFemaleLastname',
+	"Gen-DungeonsLabryinths",
+	"Gen-InnsTaverns",
+	"Gen-Settlement",
+	"Gen-Airships",
+	"Gen-Drinks",
+	"Gen-Artifacts",
+	"Gen-LootTreasure",
+	"Gen-Metals",
+	"Gen-MagicalTrees",
+	"Gen-Ship",
+	"Gen-AnimalGroups",
+	"Gen-Groups",
+	"Gen-Religion",
+	"Gen-AasimarsLastname",
+	"Gen-CatfolkLastname",
+	"Gen-FetchlingsLastname",
+	"Gen-HalfElfLastname",
+	"Gen-HalfOrcLastname",
+	"Gen-HobgoblinLastname",
+	"Gen-IfritsLastname",
+	"Gen-KobaldsLastname",
+	"Gen-OreadsLastname",
+	"Gen-RatfolkLastname",
+	"Gen-SylphsLastname",
+	"Gen-TenguLastname",
+	"Gen-TiansLastname",
+	"Gen-TieflingLastname",
+	"Gen-UndinesLastname",
+	"Gen-AngelMaleLastname",
+	"Gen-AngelFemaleLastname",
+	"Gen-CavePersonMaleLastname",
+	"Gen-CavePersonFemaleLastname",
+	"Gen-DarkElfMaleLastname",
+	"Gen-DarkElfFemaleLastname",
+	"Gen-DemonLastname",
+	"Gen-DragonMaleLastname",
+	"Gen-DragonFemaleLastname",
+	"Gen-DrowMaleLastname",
+	"Gen-DrowFemaleLastname",
+	"Gen-FairyMaleLastname",
+	"Gen-FairyFemaleLastname",
+	"Gen-GnomeMaleLastname",
+	"Gen-GnomeFemaleLastname",
+	"Gen-GoblinLastname",
+	"Gen-HalfDemonMaleLastname",
+	"Gen-HalfDemonFemaleLastname",
+	"Gen-HalflingMaleLastname",
+	"Gen-HalflingFemaleLastname",
+	"Gen-HighElfMaleLastname",
+	"Gen-HighElfFemaleLastname",
+	"Gen-HighFairyMaleLastname",
+	"Gen-HighFairyFemaleLastname",
+	"Gen-OgreLastname",
+	"Gen-Aasimars",
+	"Gen-Catfolk",
+	"Gen-Fetchlings",
+	"Gen-HalfElf",
+	"Gen-HalfOrc",
+	"Gen-Hobgoblin",
+	"Gen-Ifrits",
+	"Gen-Kobalds",
+	"Gen-Oreads",
+	"Gen-Ratfolk",
+	"Gen-Sylphs",
+	"Gen-Tengu",
+	"Gen-Tians",
+	"Gen-Tiefling",
+	"Gen-Undines",
+	"Gen-AngelMale",
+	"Gen-CavePersonMale",
+	"Gen-DarkElfMale",
+	"Gen-DragonMale",
+	"Gen-DrowMale",
+	"Gen-FairyMale",
+	"Gen-GnomeMale",
+	"Gen-HalfDemonMale",
+	"Gen-HalflingMale",
+	"Gen-HighElfMale",
+	"Gen-HighFairyMale",
+	"Gen-Ogre",
+	"Gen-AngelFemale",
+	"Gen-CavePersonFemale",
+	"Gen-DarkElfFemale",
+	"Gen-Demon",
+	"Gen-DragonFemale",
+	"Gen-DrowFemale",
+	"Gen-FairyFemale",
+	"Gen-GnomeFemale",
+	"Gen-Goblin",
+	"Gen-HalfDemonFemale",
+	"Gen-HalflingFemale",
+	"Gen-HighElfFemale",
+	"Gen-HighFairyFemale",
+	"Gen-PlotStoryHooks"
+];
 
 export type currency = {
 	name: string,
@@ -225,9 +336,25 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 
+	getOptionsForSuggest(): string[] {
+		return possibleOptions;
+	}
+
 	async onload() {  
 		await this.loadSettings();
+		console.log("loaded Fantasy Content Generator");
 
+
+		app.workspace.onLayoutReady(() => {
+			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			// Make sure the user is editing a Markdown file.
+			if (view) {
+				this.registerEditorSuggest(new AutoComplete(this.getOptionsForSuggest, this));
+			}
+		});
+
+
+		//console.log(this.registerEditorSuggest(new AutoComplete(this.getOptionsForSuggest)));
 		// This creates an icon in the left ribbon.
 		const ribbonIconEl = this.addRibbonIcon('book', 'Fantasy Generators', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.

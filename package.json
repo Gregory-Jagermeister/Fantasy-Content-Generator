@@ -24,6 +24,11 @@
 		"typescript": "4.7.4"
 	},
 	"dependencies": {
+		"@codemirror/autocomplete": "^6.4.1",
+		"@codemirror/commands": "^6.2.1",
+		"@codemirror/lang-markdown": "^6.0.5",
+		"@codemirror/lint": "^6.1.1",
+		"@codemirror/stream-parser": "^0.19.9",
 		"fantasy-content-generator": "^4.9.1",
 		"fantasy-name-generator": "^2.0.0",
 		"react": "^18.2.0",
