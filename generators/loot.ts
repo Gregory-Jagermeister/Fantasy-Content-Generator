@@ -1,4 +1,4 @@
-import { currency, lootTables } from "main";
+import { currency, lootTables } from "settings/Datatypes";
 
 export function generateLoot(enableCurrency: boolean, currencyFrequency: number, currencyTypes: currency[], lootTable: lootTables) {
     const adjectives = lootTable.adj;

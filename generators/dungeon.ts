@@ -1,4 +1,4 @@
-import { dungeonGenSettings } from "main";
+import { dungeonGenSettings } from "settings/Datatypes";
 
 export function generateDungeonName(settings: dungeonGenSettings): string {
     const prefix: string[] = settings.dungeonTypes;

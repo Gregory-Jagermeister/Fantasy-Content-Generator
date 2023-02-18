@@ -1,4 +1,4 @@
-import { groupGenSettings } from "main";
+import { groupGenSettings } from "settings/Datatypes";
 
 export function generatorGroups(settings:groupGenSettings) {
 	const adjectives = settings.adj;

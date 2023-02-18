@@ -1,4 +1,4 @@
-import { cityGeneratorSetting } from "main";
+import { cityGeneratorSetting } from "settings/Datatypes";
 
 export function generateCityName(settings : cityGeneratorSetting) {
     const prefixes = settings.prefixArray;

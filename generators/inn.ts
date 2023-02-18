@@ -1,4 +1,4 @@
-import { innGeneratorSettings } from "main";
+import { innGeneratorSettings } from "settings/Datatypes";
 interface Inn {
     name: string;
     description: string;

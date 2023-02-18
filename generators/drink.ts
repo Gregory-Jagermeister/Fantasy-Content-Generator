@@ -1,4 +1,4 @@
-import { drinkGeneratorSettings } from "main";
+import { drinkGeneratorSettings } from "settings/Datatypes";
 
 export function generatorDrinks(settings: drinkGeneratorSettings) {
     const adjectives = settings.adj;
