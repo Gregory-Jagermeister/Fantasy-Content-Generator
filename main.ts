@@ -1,6 +1,6 @@
-import { GeneratorModal } from 'modal';
+import { GeneratorModal } from 'editor/GeneratorModal';
 import { MarkdownView, Notice, Plugin } from 'obsidian';
-import { InlineGeneratorSuggester } from "editor/AutoComplete";
+import { InlineGeneratorSuggester } from "editor/InlineGenerator";
 import { MyPluginSettings, possibleOptions } from 'settings/Datatypes';
 import { DEFAULT_SETTINGS } from 'settings/DefaultSetting';
 import { SettingTab } from 'settings/SettingsTab';

@@ -30,10 +30,30 @@ In the settings of the plugin you will Find settings and options to add your own
 - Settlement Generator
 - Drink Generator
 - Group Generator.
+- Currency.
+- Dungeon Generator.
+
+## Inline Generator
+
+If you found yourself needing a quick name for an Elf or really wanting a quick dungeon description then look no further then the Inline generator. You can activate this by using the Callout token (Default is set to '@', can be changed in settings)and scrolling through the list of generators possible.
+
+### Example
+
+![Example](Obsidian_mrGSNRjLpe.gif)
 
 ## Configuration
 
-currently the only settings are the Currency settings, enable them in the settings and add your own currency determining how frequently they appear in loot generated and what currencies you would like to include.
+Below is a table for all the settings in this plugin
+| Setting | Options |
+| Reset | Click the Reset Button to return to defaults |
+| Call Out | Modify the call out used when using the inline Generator|
+| Currency | Enable Currency use in generation, How often it occurs and add type of currency with rarity. |
+| Settlements | Modify an Array of both Prefixed and Suffixes that can be used to generate settlements.|
+| Inn & Taverns | Modify Arrays of Prefixes, Types, Nouns, Descriptions and Rumors that will generate for Inns and Taverns.|
+| Drinks | Modify an array of both adjectives and nouns that will be used for the drinks generator |
+| Loot | Modify an array of both adjectives and nouns that will be used for the loot generator |
+| Group | adjust the Adjectives, Nouns, Plural Nouns, Group Types and Single Descriptors for the group generator|
+| Dungeon | adjust the Adjectives, Nouns, Locations, Dungeon types and Random Descriptions used by the Dungeon Generator.|
 
 ## TO-DO
 
@@ -43,6 +63,6 @@ currently the only settings are the Currency settings, enable them in the settin
   - ~~Settlement Generator~~
   - ~~Drink Generator~~
   - ~~Group Generator.~~
-- Randomization within a note.
+- ~~Randomization within a note.~~
 - Possibly more Generation type.
 - Better UI
