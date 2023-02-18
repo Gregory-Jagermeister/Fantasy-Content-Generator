@@ -1,7 +1,7 @@
-import { MyPluginSettings } from "./Datatypes";
+import { FantasyPluginSettings } from "./Datatypes";
 
 //The Default Settings for the Plugin.
-export const DEFAULT_SETTINGS: MyPluginSettings = {
+export const DEFAULT_SETTINGS: FantasyPluginSettings = {
     enableCurrency: false,
     citySettings: {
         prefixArray: ["camp", "castle", "east", "edge", "ever", "great", "mount", "new", "north", "red", "rose", "south", "west"],

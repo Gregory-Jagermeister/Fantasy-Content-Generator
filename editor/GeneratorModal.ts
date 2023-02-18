@@ -14,7 +14,7 @@ import { dwarfFamilyNames } from "lists/dwarvenFamilyNames";
 import * as FCG from "fantasy-content-generator";
 import { generateCityName } from "generators/city";
 import { generateLoot } from "generators/loot";
-import MyPlugin from "main";
+import FantasyPlugin from "main";
 import { generateInn } from "generators/inn";
 import { generatePathfinderName } from "generators/Pathfinder/pathfinderName";
 import { ISettlementDomainObject } from "fantasy-content-generator/dist/interfaces";
@@ -36,8 +36,8 @@ let genSettings = {
 export class GeneratorModal extends Modal {
     result: string | Error;
     onSubmit: (result: string | Error) => void;
-    plugin: MyPlugin;
-    constructor(app: App, onSubmit: (result: string | Error) => void, plugin: MyPlugin) {
+    plugin: FantasyPlugin;
+    constructor(app: App, onSubmit: (result: string | Error) => void, plugin: FantasyPlugin) {
         super(app);
         this.onSubmit = onSubmit;
         this.plugin = plugin;

@@ -1,12 +1,12 @@
 import { GeneratorModal } from 'editor/GeneratorModal';
 import { MarkdownView, Notice, Plugin } from 'obsidian';
 import { InlineGeneratorSuggester } from "editor/InlineGenerator";
-import { MyPluginSettings, possibleOptions } from 'settings/Datatypes';
+import { FantasyPluginSettings, possibleOptions } from 'settings/Datatypes';
 import { DEFAULT_SETTINGS } from 'settings/DefaultSetting';
 import { SettingTab } from 'settings/SettingsTab';
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class FantasyPlugin extends Plugin {
+	settings: FantasyPluginSettings;
 
 	//Function used to return the array of options for the suggester.
 	getOptionsForSuggest(): string[] {

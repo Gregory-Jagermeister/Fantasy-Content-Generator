@@ -1,11 +1,11 @@
-import MyPlugin from "main";
+import FantasyPlugin from "main";
 import { PluginSettingTab, App, Setting } from "obsidian";
 import { DEFAULT_SETTINGS } from "./DefaultSetting";
 
 export class SettingTab extends PluginSettingTab {
-    plugin: MyPlugin;
+    plugin: FantasyPlugin;
 
-    constructor(app: App, plugin: MyPlugin) {
+    constructor(app: App, plugin: FantasyPlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }

@@ -7,7 +7,7 @@ import { elfFamilyNames } from "lists/elvenFamilyNames";
 import { familyNameList } from "lists/humanFamilyNames";
 import { titleLastNames } from "lists/titleLastNames";
 import * as FCG from "fantasy-content-generator";
-import MyPlugin from "main";
+import FantasyPlugin from "main";
 import { Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, MarkdownView } from "obsidian";
 import { generatorAirships } from "generators/airship";
 import { generatorDrinks } from "generators/drink";
@@ -34,7 +34,7 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
     private getCompletions: () => string[]; // function to retrieve completions
     startChar: EditorPosition
     endChar: EditorPosition
-    plugin: MyPlugin
+    plugin: FantasyPlugin
 
     //An object storing all the Generator functions used by the particular selection
     private generators: Generators = {
@@ -155,7 +155,7 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
         "Gen-PlotStoryHooks": () => generatePlotHook(),
     }
 
-    constructor(getCompletions: () => string[], plugin: MyPlugin) {
+    constructor(getCompletions: () => string[], plugin: FantasyPlugin) {
         super(app);
         this.getCompletions = getCompletions;
         this.plugin = plugin;

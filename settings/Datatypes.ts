@@ -162,7 +162,7 @@ export type innGeneratorSettings = {
 }
 
 // the interface that uses all 
-export interface MyPluginSettings {
+export interface FantasyPluginSettings {
     enableCurrency: boolean;
     citySettings: cityGeneratorSetting;
     currencyTypes: currency[];
