@@ -45,6 +45,7 @@ If you found yourself needing a quick name for an Elf or really wanting a quick 
 
 Below is a table for all the settings in this plugin
 | Setting | Options |
+| ------- | ------- |
 | Reset | Click the Reset Button to return to defaults |
 | Call Out | Modify the call out used when using the inline Generator|
 | Currency | Enable Currency use in generation, How often it occurs and add type of currency with rarity. |

@@ -1,11 +1,11 @@
 {
 	"name": "fantasy-content-generator",
-	"version": "1.0.1-a",
+	"version": "1.2.0",
 	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && copy manifest.json fantasy-content-generator && copy styles.css fantasy-content-generator && zip-build fantasy-content-generator fantasy-content-generator",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [],
@@ -21,7 +21,8 @@
 		"esbuild": "0.17.3",
 		"obsidian": "latest",
 		"tslib": "2.4.0",
-		"typescript": "4.7.4"
+		"typescript": "4.7.4",
+		"zip-build": "^1.8.0"
 	},
 	"dependencies": {
 		"@codemirror/autocomplete": "^6.4.1",
