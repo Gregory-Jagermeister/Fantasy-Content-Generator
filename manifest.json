@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-fantasy-content-generator",
 	"name": "Fantasy Content Generator",
-	"version": "1.1.1",
+	"version": "1.2.0",
 	"minAppVersion": "0.15.0",
 	"description": "A Fantasy Content Generator for Obsidian",
 	"author": "Obsidian",

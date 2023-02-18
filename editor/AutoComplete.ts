@@ -24,17 +24,19 @@ import { generatePlotHook } from "generators/plothook";
 
 type Generator = () => string | Error;
 
+//An interface to be used with Getting the keys of the Generator object.
 interface Generators {
     [key: string]: Generator;
 }
 
 
-export class AutoComplete extends EditorSuggest<string> {
+export class InlineGeneratorSuggester extends EditorSuggest<string> {
     private getCompletions: () => string[]; // function to retrieve completions
     startChar: EditorPosition
     endChar: EditorPosition
     plugin: MyPlugin
 
+    //An object storing all the Generator functions used by the particular selection
     private generators: Generators = {
         'Gen-ElfMale': () => nameByRace("elf", { gender: "male" }),
         'Gen-ElfMaleLastname': () => nameByRace("elf", { gender: "male" }) + " " + elfFamilyNames[Math.floor(Math.random() * elfFamilyNames.length)],
@@ -163,15 +165,18 @@ export class AutoComplete extends EditorSuggest<string> {
         cursor: EditorPosition,
         editor: Editor
     ): EditorSuggestTriggerInfo | null {
-        // check if the cursor is immediately following a "@"
+        // check if the cursor is immediately following the Callout defined in settings
+        const callOut = this.plugin.settings.inlineCallout;
+        const escapedCallOut = callOut.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regEx = new RegExp(`${escapedCallOut}(\\S*)`);
         const line = editor.getLine(cursor.line);
-        const match = line.slice(0, cursor.ch).match(/\$\$(\S*)/);
+        const match = line.slice(0, cursor.ch).match(regEx);
 
         if (!match) {
             return null;
         }
 
-        const start = { line: cursor.line, ch: cursor.ch - match[1].length - 2 };
+        const start = { line: cursor.line, ch: cursor.ch - match[1].length - callOut.length };
         const end = { line: cursor.line, ch: cursor.ch };
 
         this.startChar = start;
@@ -189,8 +194,7 @@ export class AutoComplete extends EditorSuggest<string> {
     }
 
     selectSuggestion(value: string, _evt: MouseEvent | KeyboardEvent): void {
-        // execute the selected function
-        //const result = executeFunction(value);
+        // execute the selected function if the function does not exist then return "not implemented"
         let result: string | Error = "Not Implemented";
         if (value in this.generators) {
             result = this.generators[value]();
