@@ -67,3 +67,4 @@ Below is a table for all the settings in this plugin
 - ~~Randomization within a note.~~
 - Possibly more Generation type.
 - Better UI
+- JSON Import And Export

@@ -1,3 +1,7 @@
+
+import * as fs from 'fs';
+import { Notice } from 'obsidian';
+
 // The possible Options that could be selected durring inline generation
 export const possibleOptions = [
     'Gen-ElfMale',
@@ -161,6 +165,10 @@ export type innGeneratorSettings = {
     rumors: string[]
 }
 
+export interface FileWithPath extends File {
+    path: string
+}
+
 // the interface that uses all 
 export interface FantasyPluginSettings {
     enableCurrency: boolean;
@@ -173,4 +181,30 @@ export interface FantasyPluginSettings {
     groupSettings: groupGenSettings;
     dungeonSettings: dungeonGenSettings;
     inlineCallout: string;
+}
+
+export function importJSON(path: string, callback: (data: object) => void): void {
+    fs.readFile(path, 'utf8', (error, data) => {
+        if (error) {
+            new Notice("Error Importing: " + error);
+            return;
+        }
+        const jsonData = JSON.parse(data);
+        new Notice("Data Successfully Imported!");
+        callback(jsonData);
+    });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function exportJSON(data: any) {
+    const json = JSON.stringify(data);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.download = 'data.json';
+    a.href = url;
+    a.click();
+
+    new Notice("Data Exporting!");
 }
