@@ -1,5 +1,5 @@
 import { GeneratorModal } from 'editor/GeneratorModal';
-import { MarkdownView, Notice, Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 import { InlineGeneratorSuggester } from "editor/InlineGenerator";
 import { FantasyPluginSettings, possibleOptions } from 'settings/Datatypes';
 import { DEFAULT_SETTINGS } from 'settings/DefaultSetting';
@@ -16,20 +16,16 @@ export default class FantasyPlugin extends Plugin {
 	async onload() {  
 		await this.loadSettings();
 		app.workspace.onLayoutReady(() => {
-			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-			// Make sure the user is editing a Markdown file.
-			if (view) {
-				//Register the InlineGeneratorSuggester to the Editor suggester.
-				this.registerEditorSuggest(new InlineGeneratorSuggester(this.getOptionsForSuggest, this));
-			}
+			//Register the InlineGeneratorSuggester to the Editor suggester.
+			this.registerEditorSuggest(new InlineGeneratorSuggester(this.getOptionsForSuggest, this));
 		});
 
 		// This creates an icon in the left ribbon to access the modal for the Fantasy Content Generator.
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const ribbonIconEl = this.addRibbonIcon('book', 'Fantasy Generators', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
 			new GeneratorModal(this.app, (result) => {
 				const copyContent = async () => {
-					console.log();
 					//Try to see if any generators spit out an Error or if copying the string fails.
 					try {
 						if (result instanceof Error) {
@@ -48,14 +44,9 @@ export default class FantasyPlugin extends Plugin {
 
 			}, this).open();
 		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SettingTab(this.app, this));
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 
 		console.log("loaded Fantasy Content Generator");
 	}

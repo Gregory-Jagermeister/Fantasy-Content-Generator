@@ -35,9 +35,9 @@ In the settings of the plugin you will Find settings and options to add your own
 
 ## Inline Generator
 
-If you found yourself needing a quick name for an Elf or really wanting a quick dungeon description then look no further then the Inline generator. You can activate this by using the Callout token (Default is set to '@', can be changed in settings)and scrolling through the list of generators possible.
+If you found yourself needing a quick name for an Elf or really wanting a quick dungeon description then look no further then the Inline generator. You can activate this by using the Callout token (Default is set to '@', can be changed in settings) and scrolling through the list of generators possible.
 
-### Example
+### Inline Example
 
 ![Example](Obsidian_mrGSNRjLpe.gif)
 
@@ -67,4 +67,4 @@ Below is a table for all the settings in this plugin
 - ~~Randomization within a note.~~
 - Possibly more Generation type.
 - Better UI
-- JSON Import And Export
+- ~~JSON Import And Export~~

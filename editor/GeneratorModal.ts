@@ -119,7 +119,7 @@ export class GeneratorModal extends Modal {
             multiNames: false
         }
         genSettings.race = raceSelected;
-        settingsdiv.innerHTML = "";
+        settingsdiv.empty();
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         new Setting(settingsdiv)
             .setName("Male or Female?")
@@ -197,7 +197,7 @@ export class GeneratorModal extends Modal {
 }
 
     generatorInnSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: (settings: innGeneratorSettings) => {name:string,description:string,rumors:string[]}) {
-        settingsdiv.innerHTML = "";
+        settingsdiv.empty();
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         genAmount = 1;
         let innList = '';
@@ -245,7 +245,7 @@ export class GeneratorModal extends Modal {
     }
     
     generatorLootSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: (enableCurrency:boolean, currencyFrequency: number, currencyTypes: object[], lootTable: lootTables) => string, enableCurrency:boolean, currencyFrequency: number, currencyTypes: object[]) {
-        settingsdiv.innerHTML = "";
+        settingsdiv.empty();
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         genAmount = 1;
         let list = '';
@@ -292,7 +292,7 @@ export class GeneratorModal extends Modal {
     }
 
     generatorFCGSettlementSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: () => ISettlementDomainObject) {
-        settingsdiv.innerHTML = "";
+        settingsdiv.empty();
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         genAmount = 1;
         let list = '';
@@ -343,7 +343,7 @@ export class GeneratorModal extends Modal {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generatorCustomSettings(settingsdiv: HTMLElement, genAmount: number, generatorFunction: (settings ?: any) => string, settings ?: any) {
-        settingsdiv.innerHTML = "";
+        settingsdiv.empty();
         settingsdiv.createEl("h3", { text: "Customise The Generation" });
         genAmount = 1;
         let list = "";
