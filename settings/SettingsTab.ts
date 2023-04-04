@@ -20,7 +20,7 @@ export class SettingTab extends PluginSettingTab {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createSettingsBlock(containerEl: HTMLElement, textA: string, arr: any[], type: string): void {
+    createSettingsBlock(containerEl: HTMLElement, textA: string, arr: any[], type: string, weights: boolean): void {
         new Setting(containerEl).setName(type + " being used").setDesc("Click 'remove' for any item you want removed from the Array");
         new Setting(containerEl)
             .setName("New Addition:")
@@ -43,7 +43,7 @@ export class SettingTab extends PluginSettingTab {
 
         for (let index = 0; index < arr.length; index++) {
             new Setting(foldDiv)
-                .setName(arr[index])
+                .setName(weights ? JSON.stringify(arr[index]) : arr[index])
                 .addButton((btn) => btn
                     .setCta()
                     .setButtonText("Remove")
@@ -263,8 +263,8 @@ export class SettingTab extends PluginSettingTab {
 
         const preText = "";
         const sufText = "";
-        this.createSettingsBlock(settlementDiv, preText, this.plugin.settings.citySettings.prefixArray, "Prefixes");
-        this.createSettingsBlock(settlementDiv, sufText, this.plugin.settings.citySettings.suffixArray, "Suffixes");
+        this.createSettingsBlock(settlementDiv, preText, this.plugin.settings.citySettings.prefixArray, "Prefixes", false);
+        this.createSettingsBlock(settlementDiv, sufText, this.plugin.settings.citySettings.suffixArray, "Suffixes", false);
 
         // END SETTLEMENT SETTINGS //
 
@@ -321,11 +321,11 @@ export class SettingTab extends PluginSettingTab {
         const innDescText = "";
         const innRumorText = "";
 
-        this.createSettingsBlock(innDiv, innPreText, this.plugin.settings.innSettings.prefixes, "Prefixes");
-        this.createSettingsBlock(innDiv, innTypeText, this.plugin.settings.innSettings.innType, "Type's");
-        this.createSettingsBlock(innDiv, innNounText, this.plugin.settings.innSettings.nouns, "Nouns");
-        this.createSettingsBlock(innDiv, innDescText, this.plugin.settings.innSettings.desc, "Description's");
-        this.createSettingsBlock(innDiv, innRumorText, this.plugin.settings.innSettings.rumors, "Rumors");
+        this.createSettingsBlock(innDiv, innPreText, this.plugin.settings.innSettings.prefixes, "Prefixes", false);
+        this.createSettingsBlock(innDiv, innTypeText, this.plugin.settings.innSettings.innType, "Type's", false);
+        this.createSettingsBlock(innDiv, innNounText, this.plugin.settings.innSettings.nouns, "Nouns", false);
+        this.createSettingsBlock(innDiv, innDescText, this.plugin.settings.innSettings.desc, "Description's", false);
+        this.createSettingsBlock(innDiv, innRumorText, this.plugin.settings.innSettings.rumors, "Rumors", false);
 
         // END INN'S / TAVERN SETTINGS //
 
@@ -380,8 +380,8 @@ export class SettingTab extends PluginSettingTab {
         const drinkNounText = "";
         const drinkAdjText = "";
 
-        this.createSettingsBlock(drinkDiv, drinkAdjText, this.plugin.settings.drinkSettings.adj, "Adjectives");
-        this.createSettingsBlock(drinkDiv, drinkNounText, this.plugin.settings.drinkSettings.nouns, "Nouns");
+        this.createSettingsBlock(drinkDiv, drinkAdjText, this.plugin.settings.drinkSettings.adj, "Adjectives", false);
+        this.createSettingsBlock(drinkDiv, drinkNounText, this.plugin.settings.drinkSettings.nouns, "Nouns", false);
 
         // LOOT SETTINGS //
 
@@ -434,8 +434,8 @@ export class SettingTab extends PluginSettingTab {
         const lootNounText = "";
         const lootAdjText = "";
 
-        this.createSettingsBlock(lootDiv, lootAdjText, this.plugin.settings.drinkSettings.adj, "Adjectives");
-        this.createSettingsBlock(lootDiv, lootNounText, this.plugin.settings.drinkSettings.nouns, "Nouns");
+        this.createSettingsBlock(lootDiv, lootAdjText, this.plugin.settings.lootSettings.adj, "Adjectives", false);
+        this.createSettingsBlock(lootDiv, lootNounText, this.plugin.settings.lootSettings.items, "Items", true);
 
         // GROUP SETTINGS //
 
@@ -491,11 +491,11 @@ export class SettingTab extends PluginSettingTab {
         const groupTypes = ''
         const groupSingleDescriptors = ''
 
-        this.createSettingsBlock(groupDiv, groupAdjectives, this.plugin.settings.groupSettings.adj, "Adjectives");
-        this.createSettingsBlock(groupDiv, groupNouns, this.plugin.settings.groupSettings.nouns, "Nouns");
-        this.createSettingsBlock(groupDiv, groupNounsPlural, this.plugin.settings.groupSettings.nounsP, "Plural Nouns");
-        this.createSettingsBlock(groupDiv, groupTypes, this.plugin.settings.groupSettings.groupTypes, "Types");
-        this.createSettingsBlock(groupDiv, groupSingleDescriptors, this.plugin.settings.groupSettings.singleDescriptors, "Descriptors");
+        this.createSettingsBlock(groupDiv, groupAdjectives, this.plugin.settings.groupSettings.adj, "Adjectives", false);
+        this.createSettingsBlock(groupDiv, groupNouns, this.plugin.settings.groupSettings.nouns, "Nouns", false);
+        this.createSettingsBlock(groupDiv, groupNounsPlural, this.plugin.settings.groupSettings.nounsP, "Plural Nouns", false);
+        this.createSettingsBlock(groupDiv, groupTypes, this.plugin.settings.groupSettings.groupTypes, "Types", false);
+        this.createSettingsBlock(groupDiv, groupSingleDescriptors, this.plugin.settings.groupSettings.singleDescriptors, "Descriptors", false);
 
         // END GROUP SETTINGS //
 
@@ -551,11 +551,11 @@ export class SettingTab extends PluginSettingTab {
         const dungLocations = ''
         const dungRandomDesc = ''
 
-        this.createSettingsBlock(dungDiv, dungAdjectives, this.plugin.settings.dungeonSettings.adjectives, "Adjectives");
-        this.createSettingsBlock(dungDiv, dungNouns, this.plugin.settings.groupSettings.nouns, "Nouns");
-        this.createSettingsBlock(dungDiv, dungLocations, this.plugin.settings.dungeonSettings.locations, "Locations");
-        this.createSettingsBlock(dungDiv, dungTypes, this.plugin.settings.dungeonSettings.dungeonTypes, "Types");
-        this.createSettingsBlock(dungDiv, dungRandomDesc, this.plugin.settings.dungeonSettings.randomDesc, "Descriptors");
+        this.createSettingsBlock(dungDiv, dungAdjectives, this.plugin.settings.dungeonSettings.adjectives, "Adjectives", false);
+        this.createSettingsBlock(dungDiv, dungNouns, this.plugin.settings.groupSettings.nouns, "Nouns", false);
+        this.createSettingsBlock(dungDiv, dungLocations, this.plugin.settings.dungeonSettings.locations, "Locations", false);
+        this.createSettingsBlock(dungDiv, dungTypes, this.plugin.settings.dungeonSettings.dungeonTypes, "Types", false);
+        this.createSettingsBlock(dungDiv, dungRandomDesc, this.plugin.settings.dungeonSettings.randomDesc, "Descriptors", false);
     }
 
 }

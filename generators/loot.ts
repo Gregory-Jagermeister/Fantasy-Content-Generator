@@ -1,91 +1,64 @@
 import { currency, lootTables } from "settings/Datatypes";
 
 export function generateLoot(enableCurrency: boolean, currencyFrequency: number, currencyTypes: currency[], lootTable: lootTables) {
-    const adjectives = lootTable.adj;
-    const nouns = lootTable.nouns;
-    
-    const ItemAmount = Math.floor(Math.random() * (5 - 1 + 1)) + 1;
+    const { adj, items } = lootTable;
+    const itemAmount = Math.floor(Math.random() * 5) + 1;
 
     let loot = '';
-
-    for (let index = 0; index < ItemAmount; index++) {
-        const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    for (let index = 0; index < itemAmount; index++) {
+        const randomAdjective = adj[Math.floor(Math.random() * adj.length)];
         const amount = generateRareHighNumber(50, 0.1);
-        const vowels = ["a", "e", "i", "o", "u"];
-        const randomNoun = nouns[Math.floor(Math.random() * nouns.length)]; 
-        const vowelOrNot = isFirstCharInArray(vowels, randomAdjective) ? "an" : "a";
-        let addS = randomNoun;
-        if (!(randomNoun[randomNoun.length-1] === "e") && !(randomNoun[randomNoun.length] === "s")) {
-            addS = randomNoun[randomNoun.length] === "s" ? randomNoun + "'s" : randomNoun + "s";
-        }
-            amount > 1 ? loot += `${amount} ${randomAdjective} ${addS}` : loot += `${vowelOrNot} ${randomAdjective} ${randomNoun}`;
-        loot += ", "
+        const randomNoun = getRandomElement(items);
+        const article = /^[aeiou]/i.test(randomAdjective) ? 'an' : 'a';
+        const plural = randomNoun?.endsWith('s') ? `${randomNoun}'` : `${randomNoun}s`;
+
+        loot += `${amount > 1 ? `${amount} ${randomAdjective} ${plural}` : `${article} ${randomAdjective} ${randomNoun}`}, `;
     }
 
     if (enableCurrency) {
-        let currencyLoot = '';
-        const shouldGenCurrency = Math.floor(Math.random() * 100);
-        if (shouldGenCurrency < currencyFrequency) {
-            currencyTypes.forEach(element => {
+        const shouldGenCurrency = Math.random() * 100;
+        const currencyLoot = currencyTypes
+            .map((element) => {
                 const randomCurrencyAmount = generateRareHighNumberByRarity(element.rarity);
-                if (randomCurrencyAmount > 0) {
-                    currencyLoot += randomCurrencyAmount + " " + element.name + ", ";
-                }
-            });
-        }
+                return randomCurrencyAmount > 0 ? `${randomCurrencyAmount} ${element.name}, ` : '';
+            })
+            .join('');
 
-        loot += currencyLoot;
+        if (shouldGenCurrency < currencyFrequency) {
+            loot += currencyLoot;
+        }
     }
 
-    return loot;
+    return loot.slice(0, -2);
 }
-function isFirstCharInArray(array: string[], string: string) {
-    return array.includes(string[0]);
-}
- 
+
 function generateRareHighNumber(maxNumber: number, rarityFactor: number) {
     const randomNumber = Math.random();
-    
-    if (randomNumber < rarityFactor) {
-      return Math.floor(Math.random() * maxNumber);
-    } else {
-      return Math.floor(Math.random() * (maxNumber / 10));
-    }
+    const rarity = randomNumber < rarityFactor ? rarityFactor : rarityFactor / 10;
+
+    return Math.floor(Math.random() * maxNumber * rarity);
 }
-  
+
 function generateRareHighNumberByRarity(rarity: string) {
-    let rarityFactor = 0;
-    let maxNumber = 0;
+    const rarityFactors: { [key: string]: number } = { common: 0.7, uncommon: 0.5, rare: 0.2, rarest: 0.02 };
+    const maxNumbers: { [key: string]: number } = { common: 300, uncommon: 150, rare: 30, rarest: 10 };
     const randomNumber = Math.random();
-    const isZero = Math.random();
 
-    if (rarity === "common" && isZero > 0.3) {
-        rarityFactor = 0.7;
-        maxNumber = 300;
-    }
-
-    if (rarity === "uncommon" && isZero > 0.5) {
-        rarityFactor = 0.5;
-        maxNumber = 150;
-    }
-
-    if (rarity === "rare" && isZero > 0.8) {
-        rarityFactor = 0.2
-        maxNumber = 30
-    }
-
-    if (rarity === "rarest" && isZero > 0.98) {
-        rarityFactor = 0.02
-        maxNumber = 10
-    }
-
-    if (rarityFactor === 0) {
+    if (randomNumber > rarityFactors[rarity] || rarityFactors[rarity] === undefined) {
         return 0;
     }
-    
-    if (randomNumber < rarityFactor) {
-      return Math.floor(Math.random() * maxNumber);
-    } else {
-      return Math.floor(Math.random() * (maxNumber / 10));
+
+    return Math.floor(Math.random() * maxNumbers[rarity]);
+}
+
+function getRandomElement<T>(arr: { item: T, weight: number }[]): T | undefined {
+    const totalWeight = arr.reduce((acc, cur) => acc + cur.weight, 0);
+    let randomWeight = Math.random() * totalWeight;
+    for (const { item, weight } of arr) {
+        if (randomWeight < weight) {
+            return item;
+        }
+        randomWeight -= weight;
     }
+    return undefined;
 }

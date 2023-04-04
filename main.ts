@@ -1,5 +1,5 @@
 import { GeneratorModal } from 'editor/GeneratorModal';
-import { Notice, Plugin } from 'obsidian';
+import { MarkdownView, Notice, Plugin, Editor } from 'obsidian';
 import { InlineGeneratorSuggester } from "editor/InlineGenerator";
 import { FantasyPluginSettings, possibleOptions } from 'settings/Datatypes';
 import { DEFAULT_SETTINGS } from 'settings/DefaultSetting';
@@ -7,6 +7,7 @@ import { SettingTab } from 'settings/SettingsTab';
 
 export default class FantasyPlugin extends Plugin {
 	settings: FantasyPluginSettings;
+	currentEditor: Editor | null = null;
 
 	//Function used to return the array of options for the suggester.
 	getOptionsForSuggest(): string[] {
@@ -15,14 +16,25 @@ export default class FantasyPlugin extends Plugin {
 
 	async onload() {  
 		await this.loadSettings();
-		app.workspace.onLayoutReady(() => {
-			//Register the InlineGeneratorSuggester to the Editor suggester.
-			this.registerEditorSuggest(new InlineGeneratorSuggester(this.getOptionsForSuggest, this));
+
+		this.app.workspace.on('active-leaf-change', (leaf) => {
+			if (leaf) {
+				const view = leaf.view;
+				if (view instanceof MarkdownView) {
+					this.currentEditor = view.editor;
+				} else {
+					this.currentEditor = null;
+				}
+			} else {
+				this.currentEditor = null;
+			}
 		});
 
+		//Register the InlineGeneratorSuggester to the Editor suggester.
+		this.registerEditorSuggest(new InlineGeneratorSuggester(this.getOptionsForSuggest, this));
+
 		// This creates an icon in the left ribbon to access the modal for the Fantasy Content Generator.
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const ribbonIconEl = this.addRibbonIcon('book', 'Fantasy Generators', (evt: MouseEvent) => {
+		this.addRibbonIcon('book', 'Fantasy Generators', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
 			new GeneratorModal(this.app, (result) => {
 				const copyContent = async () => {
