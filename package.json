@@ -1,6 +1,6 @@
 {
 	"name": "fantasy-content-generator",
-	"version": "1.2.2",
+	"version": "1.2.3",
 	"description": "A Fantasy Content Generator For all your TTRPG Needs",
 	"main": "main.js",
 	"scripts": {
