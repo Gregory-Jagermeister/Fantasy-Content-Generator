@@ -30,6 +30,33 @@ export default class FantasyPlugin extends Plugin {
 			}
 		});
 
+		//Command to open Modal dialog
+		this.addCommand({
+			id: 'open-fantasy-generator',
+			name: 'Open Fantasy Generator',
+			callback: () => {
+				new GeneratorModal(this.app, (result) => {
+					const copyContent = async () => {
+						//Try to see if any generators spit out an Error or if copying the string fails.
+						try {
+							if (result instanceof Error) {
+								new Notice(`${result}`);
+							} else {
+								await navigator.clipboard.writeText(result);
+								new Notice(`${result} was copied to the clipboard.`);
+							}
+						} catch (err) {
+							console.error('Failed to copy: ', err);
+							new Notice("Failed to copy, Check error in console.");
+						}
+					}
+
+					copyContent();
+
+				}, this).open();
+			},
+		});
+
 		//Register the InlineGeneratorSuggester to the Editor suggester.
 		this.registerEditorSuggest(new InlineGeneratorSuggester(this.getOptionsForSuggest, this));
 
