@@ -1,4 +1,15 @@
-.OFCGDetails {
+.theme-light .OFCGDetails {
+    border: 1px solid #ccc;
+    box-shadow: 0px 12px 0px 0px rgba(255, 255, 255, 0.37);
+    background-color: #f0f0f0;
+}
+
+.theme-light .OFCGDetails[open] summary {
+    border-bottom: 1px solid #666;
+    margin-bottom: 0.5em;
+}
+
+.theme-dark .OFCGDetails {
     border: 1px solid #272727;
         box-shadow: 0px 12px 0px 0px rgba(0, 0, 0, 0.37);
         background-color: #313131;
@@ -16,7 +27,7 @@
     padding: 0.5em;
 }
 
-.OFCGDetails[open] summary {
+.theme-dark .OFCGDetails[open] summary {
     border-bottom: 1px solid #aaa;
     margin-bottom: 0.5em;
 }
