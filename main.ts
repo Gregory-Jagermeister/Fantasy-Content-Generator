@@ -1,104 +1,54 @@
-import { GeneratorModal } from 'editor/GeneratorModal';
-import { MarkdownView, Notice, Plugin, Editor } from 'obsidian';
+import { Notice, Plugin } from "obsidian";
+import { GeneratorModal } from "editor/GeneratorModal";
 import { InlineGeneratorSuggester } from "editor/InlineGenerator";
-import { FantasyPluginSettings, possibleOptions } from 'settings/Datatypes';
-import { DEFAULT_SETTINGS } from 'settings/DefaultSetting';
-import { SettingTab } from 'settings/SettingsTab';
+import { FantasyPluginSettings } from "settings/Datatypes";
+import { DEFAULT_SETTINGS } from "settings/DefaultSetting";
+import { SettingTab } from "settings/SettingsTab";
+import { clonePlain, mergeSettings } from "settings/settingsData";
 
 export default class FantasyPlugin extends Plugin {
 	settings: FantasyPluginSettings;
-	currentEditor: Editor | null = null;
 
-	//Function used to return the array of options for the suggester.
-	getOptionsForSuggest(): string[] {
-		return possibleOptions;
-	}
-
-	async onload() {  
+	async onload() {
 		await this.loadSettings();
 
-		this.app.workspace.on('active-leaf-change', (leaf) => {
-			if (leaf) {
-				const view = leaf.view;
-				if (view instanceof MarkdownView) {
-					this.currentEditor = view.editor;
-				} else {
-					this.currentEditor = null;
-				}
-			} else {
-				this.currentEditor = null;
-			}
-		});
-
-		//Command to open Modal dialog
 		this.addCommand({
-			id: 'open-fantasy-generator',
-			name: 'Open Fantasy Generator',
-			callback: () => {
-				new GeneratorModal(this.app, (result) => {
-					const copyContent = async () => {
-						//Try to see if any generators spit out an Error or if copying the string fails.
-						try {
-							if (result instanceof Error) {
-								new Notice(`${result}`);
-							} else {
-								await navigator.clipboard.writeText(result);
-								new Notice(`${result} was copied to the clipboard.`);
-							}
-						} catch (err) {
-							console.error('Failed to copy: ', err);
-							new Notice("Failed to copy, Check error in console.");
-						}
-					}
-
-					copyContent();
-
-				}, this).open();
-			},
+			id: "open-fantasy-generator",
+			name: "Open generator",
+			callback: () => this.openGenerator(),
 		});
-
-		//Register the InlineGeneratorSuggester to the Editor suggester.
-		this.registerEditorSuggest(new InlineGeneratorSuggester(this.getOptionsForSuggest, this));
-
-		// This creates an icon in the left ribbon to access the modal for the Fantasy Content Generator.
-		this.addRibbonIcon('book', 'Fantasy Generators', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new GeneratorModal(this.app, (result) => {
-				const copyContent = async () => {
-					//Try to see if any generators spit out an Error or if copying the string fails.
-					try {
-						if (result instanceof Error) {
-							new Notice(`${result}`);
-						} else {
-							await navigator.clipboard.writeText(result);
-							new Notice(`${result} was copied to the clipboard.`);
-						}
-					} catch (err) {
-						console.error('Failed to copy: ', err);
-						new Notice("Failed to copy, Check error in console.");
-					}
-				}
-				
-				copyContent();
-
-			}, this).open();
-		});
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
+		this.addRibbonIcon("book", "Open fantasy generator", () => this.openGenerator());
+		this.registerEditorSuggest(new InlineGeneratorSuggester(this.app, this));
 		this.addSettingTab(new SettingTab(this.app, this));
-
-		console.log("loaded Fantasy Content Generator");
 	}
 
-	onunload() {
+	/** Open the generator window; copied results go to the clipboard. */
+	openGenerator(): void {
+		new GeneratorModal(this.app, this, (text) => { void this.copyToClipboard(text); }).open();
 	}
 
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	async copyToClipboard(text: string): Promise<void> {
+		try {
+			await navigator.clipboard.writeText(text);
+			const first = text.split("\n")[0];
+			new Notice(`Copied: ${first.length > 60 ? first.slice(0, 57) + "..." : first}`);
+		} catch (e) {
+			console.error("Fantasy Content Generator: copy failed", e);
+			new Notice("Couldn't copy to the clipboard.");
+		}
 	}
 
-	async saveSettings() {
+	async loadSettings(): Promise<void> {
+		this.settings = mergeSettings(DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
 	}
-}
 
+	/** Put every setting back to its default (a fresh copy, so the defaults never change). */
+	async resetSettings(): Promise<void> {
+		this.settings = clonePlain(DEFAULT_SETTINGS);
+		await this.saveSettings();
+	}
+}

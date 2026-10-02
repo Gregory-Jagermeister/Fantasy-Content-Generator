@@ -294,7 +294,6 @@ function shopRoll(tradingPostSize: string): string {
         shops.push(roll);
     }
 
-    console.log(shops);
 
     return generateStringWithCounts(shops);
 }

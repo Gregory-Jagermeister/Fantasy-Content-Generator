@@ -1,7 +1,67 @@
-import FantasyPlugin from "main";
-import { PluginSettingTab, App, Setting, Platform } from "obsidian";
-import { cityGeneratorSetting, currency, drinkGeneratorSettings, dungeonGenSettings, exportJSON, FileWithPath, groupGenSettings, importJSON, innGeneratorSettings, lootTables } from "./Datatypes";
+import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import type FantasyPlugin from "main";
+import { currency } from "./Datatypes";
 import { DEFAULT_SETTINGS } from "./DefaultSetting";
+import { checkImport, parseJsonText, parseListInput, parseWeightedInput, WeightedItem } from "./settingsData";
+
+type SectionKey = "citySettings" | "innSettings" | "drinkSettings" | "lootSettings" | "groupSettings" | "dungeonSettings";
+
+interface ListDef {
+    /** Field name inside the section */
+    field: string;
+    label: string;
+    /** Loot items carry a weight ("Sword | 3") */
+    weighted?: boolean;
+}
+
+interface SectionDef {
+    key: SectionKey;
+    label: string;
+    file: string;
+    lists: ListDef[];
+}
+
+const SECTIONS: SectionDef[] = [
+    { key: "citySettings", label: "Settlements", file: "settlements", lists: [{ field: "prefixArray", label: "Prefixes" }, { field: "suffixArray", label: "Suffixes" }] },
+    {
+        key: "innSettings", label: "Inns and taverns", file: "inns", lists: [
+            { field: "prefixes", label: "Prefixes" }, { field: "innType", label: "Types" }, { field: "nouns", label: "Nouns" },
+            { field: "desc", label: "Descriptions" }, { field: "rumors", label: "Rumors" },
+        ],
+    },
+    { key: "drinkSettings", label: "Drinks", file: "drinks", lists: [{ field: "adj", label: "Adjectives" }, { field: "nouns", label: "Nouns" }] },
+    { key: "lootSettings", label: "Loot", file: "loot", lists: [{ field: "adj", label: "Adjectives" }, { field: "items", label: "Items", weighted: true }] },
+    {
+        key: "groupSettings", label: "Groups", file: "groups", lists: [
+            { field: "adj", label: "Adjectives" }, { field: "nouns", label: "Nouns" }, { field: "nounsP", label: "Plural nouns" },
+            { field: "groupTypes", label: "Types" }, { field: "singleDescriptors", label: "Descriptors" },
+        ],
+    },
+    {
+        key: "dungeonSettings", label: "Dungeons", file: "dungeons", lists: [
+            { field: "adjectives", label: "Adjectives" }, { field: "nouns", label: "Nouns" }, { field: "locations", label: "Locations" },
+            { field: "dungeonTypes", label: "Types" }, { field: "randomDesc", label: "Descriptors" },
+        ],
+    },
+];
+
+/** Read a file the user picked (works on desktop and phone). */
+function readPickedFile(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+        reader.onerror = () => reject(new Error("The file couldn't be read."));
+        reader.readAsText(file);
+    });
+}
+
+/** Offer some data as a .json download. */
+function downloadJson(data: unknown, name: string): void {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const a = createEl("a", { attr: { href: url, download: `fantasy-content-generator-${name}.json` } });
+    a.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 export class SettingTab extends PluginSettingTab {
     plugin: FantasyPlugin;
@@ -11,551 +71,152 @@ export class SettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
-    convertStringToArray(string: string, arr: string[]): void {
-        //const newString = string.replace(/\s/g, '');
-        const array = string.split(',');
-        array.forEach((el) => {
-            arr.push(el);
-        })
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createSettingsBlock(containerEl: HTMLElement, textA: string, arr: any[], type: string, weights: boolean): void {
-        new Setting(containerEl).setName(type + " being used").setDesc("Click 'remove' for any item you want removed from the Array");
-        new Setting(containerEl)
-            .setName("New Addition:")
-            .addTextArea((text) => {
-                text.onChange((value) => {
-                    textA = value;
-                })
-            })
-            .addButton((btn) => {
-                btn.setCta().setButtonText("Add")
-                    .onClick(async () => {
-                        this.convertStringToArray(textA, arr);
-                        this.display();
-                        await this.plugin.saveSettings();
-                    })
-            })
-
-        const foldDiv = containerEl.createEl('details', { cls: "OFCGDetails" });
-        foldDiv.createEl("summary", { text: type, cls: "OFCGSummary" });
-
-        for (let index = 0; index < arr.length; index++) {
-            new Setting(foldDiv)
-                .setName(weights ? JSON.stringify(arr[index]) : arr[index])
-                .addButton((btn) => btn
-                    .setCta()
-                    .setButtonText("Remove")
-                    .onClick(async () => {
-                        arr.splice(index, 1);
-                        this.display();
-                        await this.plugin.saveSettings();
-                    })
-                )
-
-        }
-        containerEl.createEl('hr');
+    private save(): void {
+        this.plugin.saveSettings().catch((e) => {
+            console.error("Fantasy Content Generator: saving settings failed", e);
+            new Notice("Couldn't save the settings.");
+        });
     }
 
     display(): void {
         const { containerEl } = this;
-
         containerEl.empty();
 
-        containerEl.createEl('h1', { text: 'Fantasy Content Generator' });
-        const generalSettings = containerEl.createDiv("general")
-        new Setting(generalSettings)
-            .setName('Reset To Defaults')
-            .setDesc('Click if you would like to use the default settings again')
-            .addButton((btn) => {
-                btn.setCta()
-                    .setButtonText("Reset")
-                    .onClick(async () => {
-                        this.plugin.settings = DEFAULT_SETTINGS;
-                        this.display();
-                        await this.plugin.saveSettings();
-                    })
-            })
-
-        new Setting(generalSettings).setName("Inline Generator Callout").setDesc("Set callout character to activate the inline Generator.")
-            .addText((text) => {
-                text.setValue(String(this.plugin.settings.inlineCallout));
-                text.onChange(async (value) => {
-                    this.plugin.settings.inlineCallout = value;
-                    await this.plugin.saveSettings();
-                })
-            })
-
-        // CURRENCEY SETTINGS //
-
-        const currencyEl = containerEl.createDiv("currencyDiv");
-
-        new Setting(currencyEl).setHeading().setName("Currency Settings");
-
-        new Setting(currencyEl)
-            .setName('Enable Currency for Loot Generation.')
-            .setDesc('If you have Currency in your World or game consider Activating this')
-            .addToggle((toggle) => {
-                toggle.setValue(this.plugin.settings.enableCurrency);
-                toggle.onChange(async (value) => {
-                    this.plugin.settings.enableCurrency = value;
-                    this.display();
-                    await this.plugin.saveSettings();
-                })
-            })
-
-        if (this.plugin.settings.enableCurrency) {
-
-            new Setting(currencyEl).setName("Occurance Rate:").setDesc("Set How Frequently Loot generates currency as a percentage of 100")
-                .addText((text) => {
-                    text.setValue(String(this.plugin.settings.currencyFrequency));
-                    text.onChange(async (value) => {
-                        if (!(isNaN(+value))) {
-                            this.plugin.settings.currencyFrequency = Number(value);
-                            await this.plugin.saveSettings();
-                        }
-
-                    })
-                })
-
-            if (Platform.isDesktopApp) {
-                const importExportFile = new Setting(currencyEl)
-                    .setName("Import | Export")
-                    .setDesc("Import A Json File With Supported information");
-
-                const inputAppfile = createEl("input", {
-                    attr: {
-                        type: "file",
-                        name: "currency",
-                        accept: ".json",
-                        multiple: false
-                    }
-                });
-
-                inputAppfile.onchange = async () => {
-                    const { files } = inputAppfile;
-                    if (files === null || !files.length) return;
-                    try {
-                        const file = files[0] as FileWithPath;
-                        importJSON(file.path, async (data) => {
-                            this.plugin.settings.currencyTypes = data as currency[];
-                            this.display();
-                            await this.plugin.saveSettings();
-                        });
-
-                    } catch (e) { /* empty */ }
-                }
-
-                importExportFile.addButton((b) => {
-                    b.setButtonText("Choose Import File").setTooltip(
-                        "Import Json File for the Generator"
-                    ).buttonEl.appendChild(inputAppfile)
-                    b.buttonEl.addClass("FCGInput");
-                    b.onClick(() => inputAppfile.click());
-                }).addButton((b) => {
-                    b.setButtonText("Export Section To File").setCta()
-                        .onClick(() => {
-                            exportJSON(this.plugin.settings.currencyTypes);
-                        })
-                });
-            }
-
-            const ctext = {
-                name: '',
-                rarity: 'common'
-            }
-            new Setting(currencyEl)
-                .setName("Currency Name:")
-                .addText((text) => {
-                    text.onChange((value) => {
-                        ctext.name = value;
-                    })
-                }).addDropdown((drop) => {
-                    drop.addOption("common", "Common");
-                    drop.addOption("uncommon", "Uncommon");
-                    drop.addOption("rare", "Rare");
-                    drop.addOption("rarest", "Rarest");
-                    drop.onChange((value) => {
-                        ctext.rarity = value;
-                    })
-                })
-                .addButton((btn) => {
-                    btn.setCta().setButtonText("Add")
-                        .onClick(async () => {
-                            this.plugin.settings.currencyTypes.push(ctext);
-                            this.display();
-                            await this.plugin.saveSettings();
-                        })
-                })
-
-            new Setting(currencyEl).setName("Added currency").setDesc("Click Remove on a Currency you would like to Remove");
-
-            const foldDiv = currencyEl.createEl('details', { cls: "OFCGDetails" });
-            foldDiv.createEl("summary", { text: "Currency", cls: "OFCGSummary" });
-
-            for (let index = 0; index < this.plugin.settings.currencyTypes.length; index++) {
-                new Setting(foldDiv)
-                    .setName(this.plugin.settings.currencyTypes[index].name)
-                    .addButton((btn) => btn
-                        .setCta()
-                        .setButtonText("Remove")
-                        .onClick(async () => {
-                            this.plugin.settings.currencyTypes.splice(index, 1);
-                            this.display();
-                            await this.plugin.saveSettings();
-                        })
-                    )
-
-            }
-
-        }
-
-        // END CURRENCY SETTINGS //
-        currencyEl.createEl('hr');
-        //SETTLEMENT SETTINGS//
-
-        const settlementDiv = containerEl.createDiv("settlementDiv");
-        new Setting(settlementDiv).setHeading().setName("Settlement Settings");
-        settlementDiv.createEl('br');
-
-        if (Platform.isDesktopApp) {
-            const importExportFile = new Setting(settlementDiv)
-                .setName("Import | Export")
-                .setDesc("Import A Json File With Supported information");
-
-            const inputAppfile = createEl("input", {
-                attr: {
-                    type: "file",
-                    name: "settlement",
-                    accept: ".json",
-                    multiple: false
-                }
-            });
-
-            inputAppfile.onchange = async () => {
-                const { files } = inputAppfile;
-                if (files === null || !files.length) return;
-                try {
-                    const file = files[0] as FileWithPath;
-                    importJSON(file.path, async (data) => {
-                        this.plugin.settings.citySettings = data as cityGeneratorSetting;
-                        this.display();
-                        await this.plugin.saveSettings();
-                    });
-
-                } catch (e) { /* empty */ }
-            }
-
-            importExportFile.addButton((b) => {
-                b.setButtonText("Choose Import File").setTooltip(
-                    "Import Json File for the Generator"
-                ).buttonEl.appendChild(inputAppfile)
-                b.buttonEl.addClass("FCGInput");
-                b.onClick(() => inputAppfile.click());
-            }).addButton((b) => {
-                b.setButtonText("Export Section To File").setCta()
-                    .onClick(() => {
-                        exportJSON(this.plugin.settings.citySettings);
-                    })
-            });
-        }
-
-        const preText = "";
-        const sufText = "";
-        this.createSettingsBlock(settlementDiv, preText, this.plugin.settings.citySettings.prefixArray, "Prefixes", false);
-        this.createSettingsBlock(settlementDiv, sufText, this.plugin.settings.citySettings.suffixArray, "Suffixes", false);
-
-        // END SETTLEMENT SETTINGS //
-
-        // INN'S / TAVERN SETTINGS //
-        const innDiv = containerEl.createDiv("innDiv");
-        new Setting(innDiv).setHeading().setName("Inn Settings");
-        innDiv.createEl('br');
-
-        if (Platform.isDesktopApp) {
-            const importExportFile = new Setting(innDiv)
-                .setName("Import | Export")
-                .setDesc("Import A Json File With Supported information");
-
-            const inputAppfile = createEl("input", {
-                attr: {
-                    type: "file",
-                    name: "inn",
-                    accept: ".json",
-                    multiple: false
-                }
-            });
-
-            inputAppfile.onchange = async () => {
-                const { files } = inputAppfile;
-                if (files === null || !files.length) return;
-                try {
-                    const file = files[0] as FileWithPath;
-                    importJSON(file.path, async (data) => {
-                        this.plugin.settings.innSettings = data as innGeneratorSettings;
-                        this.display();
-                        await this.plugin.saveSettings();
-                    });
-
-                } catch (e) { /* empty */ }
-            }
-
-            importExportFile.addButton((b) => {
-                b.setButtonText("Choose Import File").setTooltip(
-                    "Import Json File for the Generator"
-                ).buttonEl.appendChild(inputAppfile)
-                b.buttonEl.addClass("FCGInput");
-                b.onClick(() => inputAppfile.click());
-            }).addButton((b) => {
-                b.setButtonText("Export Section To File").setCta()
-                    .onClick(() => {
-                        exportJSON(this.plugin.settings.innSettings);
-                    })
-            });
-        }
-
-        const innPreText = "";
-        const innTypeText = "";
-        const innNounText = "";
-        const innDescText = "";
-        const innRumorText = "";
-
-        this.createSettingsBlock(innDiv, innPreText, this.plugin.settings.innSettings.prefixes, "Prefixes", false);
-        this.createSettingsBlock(innDiv, innTypeText, this.plugin.settings.innSettings.innType, "Type's", false);
-        this.createSettingsBlock(innDiv, innNounText, this.plugin.settings.innSettings.nouns, "Nouns", false);
-        this.createSettingsBlock(innDiv, innDescText, this.plugin.settings.innSettings.desc, "Description's", false);
-        this.createSettingsBlock(innDiv, innRumorText, this.plugin.settings.innSettings.rumors, "Rumors", false);
-
-        // END INN'S / TAVERN SETTINGS //
-
-        // DRINK SETTINGS //
-
-        const drinkDiv = containerEl.createDiv("drinkDiv");
-        new Setting(drinkDiv).setHeading().setName("Drink Settings");
-        drinkDiv.createEl('br');
-
-        if (Platform.isDesktopApp) {
-            const importExportFile = new Setting(drinkDiv)
-                .setName("Import | Export")
-                .setDesc("Import A Json File With Supported information");
-
-            const inputAppfile = createEl("input", {
-                attr: {
-                    type: "file",
-                    name: "drink",
-                    accept: ".json",
-                    multiple: false
-                }
-            });
-
-            inputAppfile.onchange = async () => {
-                const { files } = inputAppfile;
-                if (files === null || !files.length) return;
-                try {
-                    const file = files[0] as FileWithPath;
-                    importJSON(file.path, async (data) => {
-                        this.plugin.settings.drinkSettings = data as drinkGeneratorSettings;
-                        this.display();
-                        await this.plugin.saveSettings();
-                    });
-
-                } catch (e) { /* empty */ }
-            }
-
-            importExportFile.addButton((b) => {
-                b.setButtonText("Choose Import File").setTooltip(
-                    "Import Json File for the Generator"
-                ).buttonEl.appendChild(inputAppfile)
-                b.buttonEl.addClass("FCGInput");
-                b.onClick(() => inputAppfile.click());
-            }).addButton((b) => {
-                b.setButtonText("Export Section To File").setCta()
-                    .onClick(() => {
-                        exportJSON(this.plugin.settings.drinkSettings);
-                    })
-            });
-        }
-
-        const drinkNounText = "";
-        const drinkAdjText = "";
-
-        this.createSettingsBlock(drinkDiv, drinkAdjText, this.plugin.settings.drinkSettings.adj, "Adjectives", false);
-        this.createSettingsBlock(drinkDiv, drinkNounText, this.plugin.settings.drinkSettings.nouns, "Nouns", false);
-
-        // LOOT SETTINGS //
-
-        const lootDiv = containerEl.createDiv("lootDiv");
-        new Setting(lootDiv).setHeading().setName("Loot Settings");
-        lootDiv.createEl('br');
-
-        if (Platform.isDesktopApp) {
-            const importExportFile = new Setting(lootDiv)
-                .setName("Import | Export")
-                .setDesc("Import A Json File With Supported information");
-
-            const inputAppfile = createEl("input", {
-                attr: {
-                    type: "file",
-                    name: "loot",
-                    accept: ".json",
-                    multiple: false
-                }
-            });
-
-            inputAppfile.onchange = async () => {
-                const { files } = inputAppfile;
-                if (files === null || !files.length) return;
-                try {
-                    const file = files[0] as FileWithPath;
-                    importJSON(file.path, async (data) => {
-                        this.plugin.settings.lootSettings = data as lootTables;
-                        this.display();
-                        await this.plugin.saveSettings();
-                    });
-
-                } catch (e) { /* empty */ }
-            }
-
-            importExportFile.addButton((b) => {
-                b.setButtonText("Choose Import File").setTooltip(
-                    "Import Json File for the Generator"
-                ).buttonEl.appendChild(inputAppfile)
-                b.buttonEl.addClass("FCGInput");
-                b.onClick(() => inputAppfile.click());
-            }).addButton((b) => {
-                b.setButtonText("Export Section To File").setCta()
-                    .onClick(() => {
-                        exportJSON(this.plugin.settings.lootSettings);
-                    })
-            });
-        }
-
-        const lootNounText = "";
-        const lootAdjText = "";
-
-        this.createSettingsBlock(lootDiv, lootAdjText, this.plugin.settings.lootSettings.adj, "Adjectives", false);
-        this.createSettingsBlock(lootDiv, lootNounText, this.plugin.settings.lootSettings.items, "Items", true);
-
-        // GROUP SETTINGS //
-
-        const groupDiv = containerEl.createDiv("groupDiv");
-        new Setting(groupDiv).setHeading().setName("Group Settings");
-        groupDiv.createEl('br');
-
-        if (Platform.isDesktopApp) {
-            const importExportFile = new Setting(groupDiv)
-                .setName("Import | Export")
-                .setDesc("Import A Json File With Supported information");
-
-            const inputAppfile = createEl("input", {
-                attr: {
-                    type: "file",
-                    name: "group",
-                    accept: ".json",
-                    multiple: false
-                }
-            });
-
-            inputAppfile.onchange = async () => {
-                const { files } = inputAppfile;
-                if (files === null || !files.length) return;
-                try {
-                    const file = files[0] as FileWithPath;
-                    importJSON(file.path, async (data) => {
-                        this.plugin.settings.groupSettings = data as groupGenSettings;
-                        this.display();
-                        await this.plugin.saveSettings();
-                    });
-
-                } catch (e) { /* empty */ }
-            }
-
-            importExportFile.addButton((b) => {
-                b.setButtonText("Choose Import File").setTooltip(
-                    "Import Json File for the Generator"
-                ).buttonEl.appendChild(inputAppfile)
-                b.buttonEl.addClass("FCGInput");
-                b.onClick(() => inputAppfile.click());
-            }).addButton((b) => {
-                b.setButtonText("Export Section To File").setCta()
-                    .onClick(() => {
-                        exportJSON(this.plugin.settings.groupSettings);
-                    })
-            });
-        }
-
-        const groupAdjectives = ''
-        const groupNouns = ''
-        const groupNounsPlural = ''
-        const groupTypes = ''
-        const groupSingleDescriptors = ''
-
-        this.createSettingsBlock(groupDiv, groupAdjectives, this.plugin.settings.groupSettings.adj, "Adjectives", false);
-        this.createSettingsBlock(groupDiv, groupNouns, this.plugin.settings.groupSettings.nouns, "Nouns", false);
-        this.createSettingsBlock(groupDiv, groupNounsPlural, this.plugin.settings.groupSettings.nounsP, "Plural Nouns", false);
-        this.createSettingsBlock(groupDiv, groupTypes, this.plugin.settings.groupSettings.groupTypes, "Types", false);
-        this.createSettingsBlock(groupDiv, groupSingleDescriptors, this.plugin.settings.groupSettings.singleDescriptors, "Descriptors", false);
-
-        // END GROUP SETTINGS //
-
-        const dungDiv = containerEl.createDiv("dungDiv");
-        new Setting(dungDiv).setHeading().setName("Dungeon Settings");
-        dungDiv.createEl('br');
-
-        if (Platform.isDesktopApp) {
-            const importExportFile = new Setting(dungDiv)
-                .setName("Import | Export")
-                .setDesc("Import A Json File With Supported information");
-
-            const inputAppfile = createEl("input", {
-                attr: {
-                    type: "file",
-                    name: "dungeon",
-                    accept: ".json",
-                    multiple: false
-                }
-            });
-
-            inputAppfile.onchange = async () => {
-                const { files } = inputAppfile;
-                if (files === null || !files.length) return;
-                try {
-                    const file = files[0] as FileWithPath;
-                    importJSON(file.path, async (data) => {
-                        this.plugin.settings.dungeonSettings = data as dungeonGenSettings;
-                        this.display();
-                        await this.plugin.saveSettings();
-                    });
-
-                } catch (e) { /* empty */ }
-            }
-
-            importExportFile.addButton((b) => {
-                b.setButtonText("Choose Import File").setTooltip(
-                    "Import Json File for the Generator"
-                ).buttonEl.appendChild(inputAppfile)
-                b.buttonEl.addClass("FCGInput");
-                b.onClick(() => inputAppfile.click());
-            }).addButton((b) => {
-                b.setButtonText("Export Section To File").setCta()
-                    .onClick(() => {
-                        exportJSON(this.plugin.settings.dungeonSettings);
-                    })
-            });
-        }
-
-        const dungAdjectives = ''
-        const dungNouns = ''
-        const dungTypes = ''
-        const dungLocations = ''
-        const dungRandomDesc = ''
-
-        this.createSettingsBlock(dungDiv, dungAdjectives, this.plugin.settings.dungeonSettings.adjectives, "Adjectives", false);
-        this.createSettingsBlock(dungDiv, dungNouns, this.plugin.settings.groupSettings.nouns, "Nouns", false);
-        this.createSettingsBlock(dungDiv, dungLocations, this.plugin.settings.dungeonSettings.locations, "Locations", false);
-        this.createSettingsBlock(dungDiv, dungTypes, this.plugin.settings.dungeonSettings.dungeonTypes, "Types", false);
-        this.createSettingsBlock(dungDiv, dungRandomDesc, this.plugin.settings.dungeonSettings.randomDesc, "Descriptors", false);
+        new Setting(containerEl)
+            .setName("Reset to defaults")
+            .setDesc("Put every word list and option back to how the plugin ships.")
+            .addButton((b) => b.setButtonText("Reset").setWarning().onClick(() => {
+                this.plugin.resetSettings().then(() => this.display()).catch((e) => console.error(e));
+            }));
+
+        new Setting(containerEl)
+            .setName("Inline trigger")
+            .setDesc("Type this, then a generator name, to insert a result while writing.")
+            .addText((t) => t.setValue(this.plugin.settings.inlineCallout).onChange((v) => {
+                this.plugin.settings.inlineCallout = v;
+                this.save();
+            }));
+
+        this.currencySection(containerEl);
+        for (const section of SECTIONS) this.listSection(containerEl, section);
     }
 
+    /** Import and export buttons for one part of the settings. */
+    private importExport(el: HTMLElement, name: string, get: () => unknown, defaults: unknown, apply: (data: unknown) => void): void {
+        const input = el.createEl("input", { cls: "fcg-hidden-input", attr: { type: "file", accept: ".json,application/json" } });
+        input.addEventListener("change", () => {
+            const file = input.files?.[0];
+            input.value = "";
+            if (!file) return;
+            readPickedFile(file)
+                .then((text) => {
+                    const data = parseJsonText(text);
+                    const problem = checkImport(defaults, data);
+                    if (problem) throw new Error(`This file doesn't fit: ${problem}.`);
+                    apply(data);
+                    this.save();
+                    this.display();
+                    new Notice("Imported.");
+                })
+                .catch((e) => new Notice(`Import failed. ${e instanceof Error ? e.message : String(e)}`));
+        });
+        new Setting(el)
+            .setName("Import or export")
+            .setDesc("Share these lists between vaults as a .json file.")
+            .addButton((b) => b.setButtonText("Import").onClick(() => input.click()))
+            .addButton((b) => b.setButtonText("Export").onClick(() => downloadJson(get(), name)));
+    }
+
+    private currencySection(containerEl: HTMLElement): void {
+        const s = this.plugin.settings;
+        new Setting(containerEl).setName("Currency").setHeading();
+        new Setting(containerEl)
+            .setName("Add currency to loot")
+            .setDesc("Loot sometimes includes coins from the list below.")
+            .addToggle((t) => t.setValue(s.enableCurrency).onChange((v) => {
+                s.enableCurrency = v;
+                this.save();
+                this.display();
+            }));
+        if (!s.enableCurrency) return;
+
+        new Setting(containerEl)
+            .setName("How often")
+            .setDesc("Chance (0 to 100) that a loot roll includes currency.")
+            .addText((t) => t.setValue(String(s.currencyFrequency)).onChange((v) => {
+                const n = Number(v);
+                if (Number.isFinite(n) && n >= 0 && n <= 100) {
+                    s.currencyFrequency = n;
+                    this.save();
+                }
+            }));
+
+        this.importExport(containerEl, "currency", () => s.currencyTypes, DEFAULT_SETTINGS.currencyTypes, (data) => {
+            s.currencyTypes = (data as currency[]).filter((c) => typeof c?.name === "string");
+        });
+
+        const draft: currency = { name: "", rarity: "common" };
+        new Setting(containerEl)
+            .setName("New currency")
+            .addText((t) => t.setPlaceholder("Gold pieces").onChange((v) => { draft.name = v.trim(); }))
+            .addDropdown((d) => d
+                .addOption("common", "Common").addOption("uncommon", "Uncommon").addOption("rare", "Rare").addOption("rarest", "Rarest")
+                .onChange((v) => { draft.rarity = v; }))
+            .addButton((b) => b.setButtonText("Add").setCta().onClick(() => {
+                if (!draft.name) return;
+                s.currencyTypes.push({ ...draft });
+                this.save();
+                this.display();
+            }));
+
+        const details = containerEl.createEl("details", { cls: "fcg-details" });
+        details.createEl("summary", { text: `Currencies (${s.currencyTypes.length})`, cls: "fcg-summary" });
+        s.currencyTypes.forEach((c, i) => {
+            new Setting(details).setName(c.name).setDesc(c.rarity).addButton((b) => b.setButtonText("Remove").onClick(() => {
+                s.currencyTypes.splice(i, 1);
+                this.save();
+                this.display();
+            }));
+        });
+    }
+
+    private listSection(containerEl: HTMLElement, def: SectionDef): void {
+        const settings = this.plugin.settings as unknown as Record<SectionKey, Record<string, unknown[]>>;
+        const defaults = DEFAULT_SETTINGS as unknown as Record<SectionKey, Record<string, unknown[]>>;
+        new Setting(containerEl).setName(def.label).setHeading();
+        this.importExport(containerEl, def.file, () => settings[def.key], defaults[def.key], (data) => {
+            settings[def.key] = data as Record<string, unknown[]>;
+        });
+        for (const list of def.lists) this.listBlock(containerEl, settings[def.key], list);
+    }
+
+    private listBlock(containerEl: HTMLElement, section: Record<string, unknown[]>, list: ListDef): void {
+        const items = section[list.field] ?? (section[list.field] = []);
+        let draft = "";
+        new Setting(containerEl)
+            .setName(`Add ${list.label.toLowerCase()}`)
+            .setDesc(list.weighted
+                ? "One per line as name | weight (higher weight = more common), for example: Sword | 3."
+                : "One per line, or several on one line separated by commas.")
+            .addTextArea((t) => t.onChange((v) => { draft = v; }))
+            .addButton((b) => b.setButtonText("Add").setCta().onClick(() => {
+                const added: unknown[] = list.weighted ? parseWeightedInput(draft) : parseListInput(draft);
+                if (!added.length) return;
+                items.push(...added);
+                this.save();
+                this.display();
+            }));
+
+        const details = containerEl.createEl("details", { cls: "fcg-details" });
+        details.createEl("summary", { text: `${list.label} (${items.length})`, cls: "fcg-summary" });
+        items.forEach((item, i) => {
+            const label = list.weighted ? `${(item as WeightedItem).item} (weight ${(item as WeightedItem).weight})` : String(item);
+            new Setting(details).setName(label).addButton((b) => b.setButtonText("Remove").onClick(() => {
+                items.splice(i, 1);
+                this.save();
+                this.display();
+            }));
+        });
+    }
 }
+

@@ -1,36 +1,29 @@
-.theme-light .OFCGDetails {
-    border: 1px solid #ccc;
-    box-shadow: 0px 12px 0px 0px rgba(255, 255, 255, 0.37);
-    background-color: #f0f0f0;
-}
+/* Fantasy Content Generator: settings lists and the generator window. Uses theme variables, so it suits light and dark themes. */
 
-.theme-light .OFCGDetails[open] summary {
-    border-bottom: 1px solid #666;
-    margin-bottom: 0.5em;
-}
-
-.theme-dark .OFCGDetails {
-    border: 1px solid #272727;
-        box-shadow: 0px 12px 0px 0px rgba(0, 0, 0, 0.37);
-        background-color: #313131;
-    padding: 0.5em 0.5em 0.5em;
-    margin: 1em;
-}
-
-.OFCGSSummary {
-    font-weight: bold;
-    margin: -0.5em -0.5em 0.5em;
+.fcg-details {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background-color: var(--background-secondary);
+    margin: 0.5em 0 1.5em;
     padding: 0.5em;
 }
 
-.OFCGDetails[open] {
-    padding: 0.5em;
-}
-
-.theme-dark .OFCGDetails[open] summary {
-    border-bottom: 1px solid #aaa;
+.fcg-details[open] > .fcg-summary {
+    border-bottom: 1px solid var(--background-modifier-border);
     margin-bottom: 0.5em;
 }
-.FCGInput>input[type="file"] {
+
+.fcg-summary {
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    padding: 0.25em 0;
+}
+
+.fcg-hidden-input {
     display: none;
+}
+
+.fcg-generator-select {
+    width: 100%;
+    margin-bottom: 1em;
 }

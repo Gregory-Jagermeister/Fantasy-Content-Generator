@@ -24,3 +24,6 @@ fantasy-content-generator.zip
 fantasy-content-generator
 fantasy-content-generator/styles.css
 builds
+
+# Test bundles
+tests/build
