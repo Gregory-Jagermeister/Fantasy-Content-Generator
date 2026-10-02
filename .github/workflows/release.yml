@@ -1,0 +1,99 @@
+# Release the plugin when a version tag is pushed (based on Obsidian's guide:
+# https://docs.obsidian.md/Plugins/Releasing/Release+your+plugin+with+GitHub+Actions).
+#
+# Real release: bump with `npm version patch|minor|major`, then push the commit and the tag.
+#   -> lint, tests and build run, then a DRAFT release is created with main.js, manifest.json
+#      and styles.css attached and the notes taken from the README changelog. Publish it by hand.
+# Test run: Actions > Release Obsidian plugin > Run workflow. Same checks and build, no release;
+#   the three files are kept as a downloadable workflow artifact.
+#
+# One-time setting: Settings > Actions > General > Workflow permissions > Read and write.
+
+name: Release Obsidian plugin
+
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Check versions match the tag
+        if: github.ref_type == 'tag'
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          manifest=$(node -p "require('./manifest.json').version")
+          package=$(node -p "require('./package.json').version")
+          listed=$(node -p "require('./versions.json')['$tag'] || ''")
+          echo "tag=$tag manifest=$manifest package=$package versions.json=$listed"
+          if [ "$tag" != "$manifest" ] || [ "$tag" != "$package" ] || [ -z "$listed" ]; then
+            echo "::error::Tag, manifest.json, package.json and versions.json must all be $tag. Use npm version to bump."
+            exit 1
+          fi
+
+      - name: Release notes from the README changelog
+        if: github.ref_type == 'tag'
+        run: |
+          awk -v v="### ${GITHUB_REF_NAME}" '
+            $0 == v { on = 1; next }
+            on && /^##/ { exit }
+            on { print }
+          ' README.md > release-notes.md
+          if [ ! -s release-notes.md ]; then echo "See the README changelog." > release-notes.md; fi
+          cat release-notes.md
+
+      - name: Attest build files
+        if: github.ref_type == 'tag'
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+
+      - name: Create draft release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --draft \
+            main.js manifest.json styles.css
+
+      - name: Keep the build files (test run)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-build
+          path: |
+            main.js
+            manifest.json
+            styles.css
