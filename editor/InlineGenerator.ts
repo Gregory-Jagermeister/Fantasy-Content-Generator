@@ -41,9 +41,15 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
         // Write through the editor this suggestion belongs to (a note, or a note card on a canvas).
         const context = this.context;
         if (!context) return;
+        const { editor, start, end } = context;
+        this.close();
+        // The list can still be showing for a moment after an insert; a second pick (a quick Enter)
+        // would then point past the text. Only insert while the typed "@Key" is still there.
+        const trigger = this.plugin.settings.inlineCallout || "@";
+        const inDoc = end.line <= editor.lastLine() && end.ch <= editor.getLine(end.line).length;
+        if (!inDoc || !editor.getRange(start, end).startsWith(trigger)) return;
         if (this.plugin.isRetired(value)) {
-            new Notice(retiredMessage(value, this.plugin.settings.inlineCallout || "@"));
-            this.close();
+            new Notice(retiredMessage(value, trigger));
             return;
         }
         let text: string;
@@ -53,6 +59,8 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
             new Notice(`Couldn't generate ${value}: ${e instanceof Error ? e.message : String(e)}`);
             return;
         }
-        context.editor.replaceRange(text, context.start, context.end);
+        editor.replaceRange(text, start, end);
+        editor.setCursor(editor.offsetToPos(editor.posToOffset(start) + text.length));
     }
+
 }

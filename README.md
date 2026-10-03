@@ -25,6 +25,7 @@ The names for Angel, Cave person, Dark elf, Demon, Dragon, Drow, Dwarf, Elf, Fai
 - **Copy to my folder** for Drinks, Dungeons and labyrinths, Inns and taverns, Metals and Ship.
 - **Show groups** in General settings to hide groups you don't use.
 - Fixed: inn rumours could show "undefined" or freeze with fewer than three rumours; double spaces in drink and dungeon names; "famous for its …" in dungeon descriptions; plot hooks ("rulers's", a trailing comma, missing "the", capitalised places mid-sentence).
+- Fixed: pressing Enter straight after picking an inline suggestion could do nothing (the pick ran a second time against old text).
 
 ### 1.3.3
 - Dwarf and Elf family names now come from the same name library as the other races.
