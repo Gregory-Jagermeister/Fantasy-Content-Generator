@@ -4,11 +4,7 @@ This is a plugin for Obsidian (<https://obsidian.md>) for the generation of fant
 
 ## Credits and Resources
 
-Would Like to acknowledge these libraries and resources that I used to help create this.
-
-The Fantasy-names (<https://github.com/Snake4life/fantasy-names>) github as it helped with understanding how these generators work,
-The Fantasy Name Generator package (<https://www.npmjs.com/package/fantasy-name-generator>)
-The Fantasy Content Generator Package (<https://www.npmjs.com/package/fantasy-content-generator>)
+The names for Angel, Cave person, Dark elf, Demon, Dragon, Drow, Dwarf, Elf, Fairy, Gnome, Goblin, Half demon, Halfling, High elf, High fairy, Human, Ogre and Orc come from the Fantasy Name Generator package (<https://www.npmjs.com/package/fantasy-name-generator>, ISC licence).
 
 ## How to Use
 
@@ -22,6 +18,14 @@ The Fantasy Content Generator Package (<https://www.npmjs.com/package/fantasy-co
 ![Example](Obsidian-Fantasy-Content-Generator-Compressed.gif)
 
 ## Changelog
+
+### 1.3.1
+- **Some generators have been retired** so they can be rewritten from scratch in a later update (see **TO-DO**):
+  - Names: Aasimar, Catfolk, Fetchling, Half-elf, Half-orc, Hobgoblin, Ifrit, Kobold, Oread, Ratfolk, Sylph, Tengu, Tian, Tiefling, Undine
+  - Airships, Artifacts, Animal groups, Magical trees, Trading post
+- Their inline keys (for example `@Catfolk`, `@CatfolkLastname`, `@TradingPost`) still show in the list, marked **Retired in 1.3.1**. Picking one shows a short message and inserts nothing. Templater calls to them show the same message.
+- You can make your own replacement with a custom generator note: set `fcg-key` to the old key (for example `fcg-key: Catfolk`) and it works again. See **Custom generators** below.
+- Settlements now use the plugin's own code. The population always fits the settlement type (a metropolis could show a wrong or negative number before). The plugin is about 40% smaller.
 
 ### 1.3.0
 - **Custom generators from notes** (#11): put notes with `fcg-generator` in their properties in the `Generators` folder (set in settings) and they appear in the `@` suggestions and the generator window. See **Custom generators** below.
@@ -132,6 +136,9 @@ Below is a table for all the settings in this plugin
   - ~~Drink Generator~~
   - ~~Group Generator.~~
 - ~~Randomization within a note.~~
+- Rewrite the generators retired in 1.3.1:
+  - Names: Aasimar, Catfolk, Fetchling, Half-elf, Half-orc, Hobgoblin, Ifrit, Kobold, Oread, Ratfolk, Sylph, Tengu, Tian, Tiefling, Undine
+  - Airships, Artifacts, Animal groups, Magical trees, Trading post
 - Possibly more Generation type.
 - Better UI
 - ~~JSON Import And Export~~
@@ -145,14 +152,3 @@ npm run build   # type check and production build of main.js
 npm run lint    # Obsidian's own lint rules (eslint-plugin-obsidianmd)
 npm test        # unit tests
 ```
-
-A release attaches `main.js`, `manifest.json` and `styles.css` to a GitHub release tagged with the version (for example `1.2.5`).
-
-### Releasing
-
-1. Add the new version's notes under **Changelog** in this README (`### 1.3.1` and a list).
-2. `npm version patch` (or `minor` / `major`): bumps `manifest.json`, `package.json` and `versions.json`, commits and tags.
-3. Push the commit and the tag (`git push --follow-tags`, or in GitHub Desktop push, then push the tag).
-4. GitHub Actions lints, tests and builds, then creates a **draft release** with `main.js`, `manifest.json`, `styles.css` and the changelog notes. Check it and press **Publish**.
-
-To try the pipeline without releasing: Actions › Release Obsidian plugin › Run workflow (the files are kept as a download on the run).

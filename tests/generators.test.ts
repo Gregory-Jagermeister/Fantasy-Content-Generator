@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_SETTINGS } from "settings/DefaultSetting";
-import { GENERATORS, RACES, inlineGenerators, raceName } from "generators/registry";
+import { GENERATORS, RACES, RETIRED_KEYS, inlineGenerators, raceName, retiredMessage } from "generators/registry";
+import { SETTLEMENT_TYPES, generateSettlement } from "generators/settlement";
 import { clonePlain } from "settings/settingsData";
 import { dwarfFamilyNames } from "lists/dwarvenFamilyNames";
 import { familyNameList } from "lists/humanFamilyNames";
@@ -28,9 +29,12 @@ test("every race gives a name for both genders, with and without a family name",
     }
 });
 
-test("inline keys: every 1.2.4 key still works, plus the corrected spelling", () => {
+test("inline keys: every 1.2.4 key still works or is retired, plus the corrected spelling", () => {
     const gens = inlineGenerators();
-    for (const k of keys124) assert.ok(k in gens, `missing ${k}`);
+    for (const k of keys124) assert.ok(k in gens || RETIRED_KEYS.includes(k), `missing ${k}`);
+    for (const k of RETIRED_KEYS) assert.ok(!(k in gens), `retired key still built in: ${k}`);
+    assert.equal(RETIRED_KEYS.length, 35);
+    assert.equal(Object.keys(gens).length, 74 + 1);
     assert.deepEqual(Object.keys(gens).filter((k) => !(keys124).includes(k)), ["DungeonsLabyrinths"]);
     for (const [k, fn] of Object.entries(gens)) assert.ok(!bad(fn(settings)), k);
 });
@@ -51,4 +55,23 @@ test("dwarf and human names use their own lists (not the elf list)", () => {
 
 test("GnomeMale works (it returned an error in 1.2.4)", () => {
     assert.ok(!bad(inlineGenerators().GnomeMale(settings)));
+});
+
+test("retired keys are 1.2.4 keys and explain themselves", () => {
+    for (const k of RETIRED_KEYS) assert.ok(keys124.includes(k), k);
+    assert.equal(retiredMessage("Catfolk"), "@Catfolk was removed in 1.3.1. See the plugin's README.");
+    assert.equal(retiredMessage("Catfolk", "!"), "!Catfolk was removed in 1.3.1. See the plugin's README.");
+});
+
+test("settlement: type on the ladder, population inside its range", () => {
+    assert.equal(SETTLEMENT_TYPES.length, 11);
+    for (const t of SETTLEMENT_TYPES) assert.ok(t.minPop < t.maxPop, t.label);
+    const metro = SETTLEMENT_TYPES.find((t) => t.label === "Metropolis");
+    assert.deepEqual([metro?.minPop, metro?.maxPop], [100000, 5000000]);
+    for (let i = 0; i < 1000; i++) {
+        const s = generateSettlement();
+        assert.ok(Number.isInteger(s.population) && s.population >= s.type.minPop && s.population <= s.type.maxPop, `${s.type.label} ${s.population}`);
+    }
+    const text = inlineGenerators().Settlement(settings);
+    assert.match(text, /^Name: .+\nPopulation: [\d,.\s]+\nType: (Thorp|Hamlet|Village|Small Town|Medium Town|Large Town|Small City|Medium City|Large City|Great City|Metropolis)$/);
 });

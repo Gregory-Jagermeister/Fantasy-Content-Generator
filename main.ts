@@ -5,7 +5,7 @@ import { FantasyPluginSettings } from "settings/Datatypes";
 import { DEFAULT_SETTINGS } from "settings/DefaultSetting";
 import { SettingTab } from "settings/SettingsTab";
 import { clonePlain, mergeSettings } from "settings/settingsData";
-import { inlineGenerators } from "generators/registry";
+import { inlineGenerators, RETIRED_KEYS, retiredMessage } from "generators/registry";
 import { runCustom } from "generators/custom";
 import { CustomGeneratorStore } from "custom/store";
 
@@ -59,12 +59,23 @@ export default class FantasyPlugin extends Plugin {
 		return [...this.builtInKeys(), ...this.customs.active.keys()];
 	}
 
+	/** Keys removed in 1.3.1 that no custom generator has taken over. Shown in the inline list, marked retired. */
+	retiredKeys(): string[] {
+		return RETIRED_KEYS.filter((k) => !this.customs.active.has(k));
+	}
+
+	/** Is this a retired key that no custom generator has taken over? */
+	isRetired(key: string): boolean {
+		return RETIRED_KEYS.includes(key) && !this.customs.active.has(key);
+	}
+
 	/** One result for an inline key. Throws with a readable message. */
 	generate(key: string): string {
 		const builtIn = this.builtIns[key];
 		if (builtIn) return builtIn(this.settings);
 		const custom = this.customs.active.get(key);
 		if (custom) return runCustom(custom);
+		if (RETIRED_KEYS.includes(key)) throw new Error(retiredMessage(key, this.settings.inlineCallout || "@"));
 		throw new Error(`There is no generator called "${key}".`);
 	}
 

@@ -27,7 +27,6 @@
 		"typescript-eslint": "^8.46.0"
 	},
 	"dependencies": {
-		"fantasy-content-generator": "^4.9.1",
 		"fantasy-name-generator": "^2.0.0"
 	}
 }

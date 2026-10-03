@@ -1,6 +1,7 @@
 import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, Notice } from "obsidian";
 import type FantasyPlugin from "main";
 import { rankKeys } from "generators/custom";
+import { RETIRED_IN, retiredMessage } from "generators/registry";
 
 /** Type the trigger (default "@") then a generator name, e.g. "@ElfFemale", and pick it to insert a result. */
 export class InlineGeneratorSuggester extends EditorSuggest<string> {
@@ -26,19 +27,25 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
 
     /** Names that start with what was typed come first, then names that contain it. */
     getSuggestions(context: EditorSuggestContext): string[] {
-        return rankKeys(this.plugin.inlineKeys(), context.query);
+        return rankKeys([...this.plugin.inlineKeys(), ...this.plugin.retiredKeys()], context.query);
     }
 
     renderSuggestion(value: string, el: HTMLElement): void {
         el.createDiv({ text: value });
         const custom = this.plugin.customs.active.get(value);
         if (custom) el.createDiv({ text: custom.name, cls: "fcg-suggestion-note" });
+        else if (this.plugin.isRetired(value)) el.createDiv({ text: `Retired in ${RETIRED_IN}`, cls: "fcg-suggestion-note" });
     }
 
     selectSuggestion(value: string): void {
         // Write through the editor this suggestion belongs to (a note, or a note card on a canvas).
         const context = this.context;
         if (!context) return;
+        if (this.plugin.isRetired(value)) {
+            new Notice(retiredMessage(value, this.plugin.settings.inlineCallout || "@"));
+            this.close();
+            return;
+        }
         let text: string;
         try {
             text = this.plugin.generate(value);

@@ -1,24 +1,18 @@
 /* Every generator in one place, used by the modal and the inline suggester.
    No Obsidian imports, so it runs in unit tests. Generators return plain text and throw on failure. */
 import { nameByRace } from "fantasy-name-generator";
-import * as FCG from "fantasy-content-generator";
 import { FantasyPluginSettings } from "settings/Datatypes";
 import { generateCityName } from "generators/city";
+import { generateSettlement } from "generators/settlement";
 import { generateDungeonName } from "generators/dungeon";
 import { generateInn } from "generators/inn";
-import { generatorAirships } from "generators/airship";
 import { generatorDrinks } from "generators/drink";
-import { generateMiscellaneousArtifacts } from "generators/artifact";
 import { generateLoot } from "generators/loot";
 import { generatorMetals } from "generators/metal";
-import { generatorMagical_trees } from "generators/magicalTrees";
 import { generateShipName } from "generators/ship";
-import { generatorAnimal_groups } from "generators/animalGroups";
 import { generatorGroups } from "generators/groups";
 import { generatorReligions } from "generators/religions";
-import { generatePathfinderName } from "generators/Pathfinder/pathfinderName";
 import { generatePlotHook } from "generators/plothook";
-import { generateTradingPost } from "generators/tradingPost";
 import { dwarfFamilyNames } from "lists/dwarvenFamilyNames";
 import { elfFamilyNames } from "lists/elvenFamilyNames";
 import { familyNameList } from "lists/humanFamilyNames";
@@ -39,40 +33,22 @@ export interface Generated {
 type FamilySource = "repeat" | "list";
 
 export interface RaceDef {
-    /** Inline key stem, e.g. "HalfElf" -> @HalfElf, @HalfElfLastname */
+    /** Inline key stem, e.g. "Dwarf" -> @DwarfMale, @DwarfMaleLastname */
     key: string;
     /** Shown in the modal */
     label: string;
     /** Id passed to the name library */
     race: string;
-    /** "pathfinder" uses this plugin's Pathfinder lists; "library" uses fantasy-name-generator */
-    source: "pathfinder" | "library";
     /** Inline keys come in Male / Female versions */
     gendered: boolean;
     family?: FamilySource;
     familyList?: string[];
 }
 
-const pathfinder = (key: string, label: string, race: string): RaceDef => ({ key, label, race, source: "pathfinder", gendered: false });
 const library = (key: string, label: string, race: string, gendered = true, familyList?: string[]): RaceDef =>
-    ({ key, label, race, source: "library", gendered, family: familyList ? "list" : "repeat", familyList });
+    ({ key, label, race, gendered, family: familyList ? "list" : "repeat", familyList });
 
 export const RACES: RaceDef[] = [
-    pathfinder("Aasimars", "Aasimar", "aasimars"),
-    pathfinder("Catfolk", "Catfolk", "catfolk"),
-    pathfinder("Fetchlings", "Fetchling", "fetchlings"),
-    pathfinder("HalfElf", "Half-elf", "halfelf"),
-    pathfinder("HalfOrc", "Half-orc", "halforc"),
-    pathfinder("Hobgoblin", "Hobgoblin", "hobgoblin"),
-    pathfinder("Ifrits", "Ifrit", "ifrits"),
-    pathfinder("Kobalds", "Kobold", "kobalds"),
-    pathfinder("Oreads", "Oread", "oreads"),
-    pathfinder("Ratfolk", "Ratfolk", "ratfolk"),
-    pathfinder("Sylphs", "Sylph", "sylphs"),
-    pathfinder("Tengu", "Tengu", "tengu"),
-    pathfinder("Tians", "Tian", "tians"),
-    pathfinder("Tiefling", "Tiefling", "tiefling"),
-    pathfinder("Undines", "Undine", "undines"),
     library("Angel", "Angel", "angel"),
     library("CavePerson", "Cave person", "cavePerson"),
     library("DarkElf", "Dark elf", "darkelf"),
@@ -103,7 +79,6 @@ function libraryName(race: string, gender: Gender): string {
 
 /** A name for a race, with or without a family name. */
 export function raceName(def: RaceDef, gender: Gender, withFamily: boolean): string {
-    if (def.source === "pathfinder") return generatePathfinderName(def.race, gender, withFamily);
     const first = libraryName(def.race, gender);
     if (!withFamily) return first;
     const family = def.familyList ? pick(def.familyList) : libraryName(def.race, gender);
@@ -122,9 +97,6 @@ export interface GeneratorDef {
 
 const firstLine = (text: string): string => text.split("\n")[0];
 const plain = (text: string): Generated => ({ title: firstLine(text), text });
-const titleCase = (str: string): string =>
-    str.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
-
 export const GENERATORS: GeneratorDef[] = [
     { key: "DungeonsLabryinths", label: "Dungeons and labyrinths", group: "Settlements and buildings", run: (s) => plain(generateDungeonName(s.dungeonSettings)) },
     {
@@ -135,29 +107,36 @@ export const GENERATORS: GeneratorDef[] = [
     },
     {
         key: "Settlement", label: "Settlement", group: "Settlements and buildings", run: (s) => {
-            const info = FCG.Settlements.generate();
+            const info = generateSettlement();
             const name = generateCityName(s.citySettings);
-            return { title: name, text: `Name: ${name}\nPopulation: ${info.population}\nType: ${titleCase(info.type)}` };
+            return { title: name, text: `Name: ${name}\nPopulation: ${info.population.toLocaleString()}\nType: ${info.type.label}` };
         },
     },
-    {
-        key: "TradingPost", label: "Trading post", group: "Settlements and buildings", run: (s) => {
-            const name = generateCityName(s.citySettings);
-            return { title: name, text: `Trading Post Name: ${name}\n${generateTradingPost()}` };
-        },
-    },
-    { key: "Airships", label: "Airships", group: "Objects and vehicles", run: () => plain(generatorAirships()) },
     { key: "Drinks", label: "Drinks", group: "Objects and vehicles", run: (s) => plain(generatorDrinks(s.drinkSettings)) },
-    { key: "Artifacts", label: "Artifacts", group: "Objects and vehicles", run: () => plain(generateMiscellaneousArtifacts()) },
     { key: "LootTreasure", label: "Loot and treasure", group: "Objects and vehicles", run: (s) => plain(generateLoot(s.enableCurrency, s.currencyFrequency, s.currencyTypes, s.lootSettings)) },
     { key: "Metals", label: "Metals", group: "Objects and vehicles", run: () => plain(generatorMetals()) },
-    { key: "MagicalTrees", label: "Magical trees", group: "Objects and vehicles", run: () => plain(generatorMagical_trees()) },
     { key: "Ship", label: "Ship", group: "Objects and vehicles", run: () => plain(generateShipName()) },
-    { key: "AnimalGroups", label: "Animal groups", group: "Groups and religions", run: () => plain(generatorAnimal_groups()) },
     { key: "Groups", label: "Groups", group: "Groups and religions", run: (s) => plain(generatorGroups(s.groupSettings)) },
     { key: "Religion", label: "Religion", group: "Groups and religions", run: () => plain(generatorReligions()) },
     { key: "PlotStoryHooks", label: "Plot and story hooks", group: "Story tools", run: () => plain(generatePlotHook()) },
 ];
+
+/**
+ * Inline keys retired in 1.3.1, to be rewritten in a later update.
+ * They still show in the inline list, marked retired; picking one explains why instead of inserting text.
+ * A custom generator note may reuse any of these keys.
+ */
+export const RETIRED_IN = "1.3.1";
+export const RETIRED_KEYS: readonly string[] = [
+    ...["Aasimars", "Catfolk", "Fetchlings", "HalfElf", "HalfOrc", "Hobgoblin", "Ifrits", "Kobalds", "Oreads",
+        "Ratfolk", "Sylphs", "Tengu", "Tians", "Tiefling", "Undines"].flatMap((k) => [k, `${k}Lastname`]),
+    "Airships", "Artifacts", "AnimalGroups", "MagicalTrees", "TradingPost",
+];
+
+/** What to tell someone who picks a retired key. */
+export function retiredMessage(key: string, trigger = "@"): string {
+    return `${trigger}${key} was removed in ${RETIRED_IN}. See the plugin's README.`;
+}
 
 /** Inline keys kept from older versions that now point at a renamed key. */
 const ALIASES: Record<string, string> = { DungeonsLabyrinths: "DungeonsLabryinths" };
