@@ -19,6 +19,10 @@ The names for Angel, Cave person, Dark elf, Demon, Dragon, Drow, Dwarf, Elf, Fai
 
 ## Changelog
 
+### 1.3.3
+- Dwarf and Elf family names now come from the same name library as the other races.
+- Small fixes to the Orc family names.
+
 ### 1.3.2
 - **Religion** and **Groups** have been retired so they can be rewritten from scratch in a later update (see **TO-DO**). `@Religion` and `@Groups` show **Retired in 1.3.2** in the list.
 - The **Groups** settings section has gone. If you edited its lists, your words are still in the plugin's data file; you can turn them into a custom generator note (see **Custom generators** below).

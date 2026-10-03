@@ -1,4 +1,4 @@
-/* Settings shapes and small dice helpers. */
+/* Settings shapes. */
 
 // currency Datatype for defining custom currency
 export type currency = {
@@ -59,28 +59,4 @@ export interface FantasyPluginSettings {
     defaultAmount: number;
     /** Settings section shown last */
     settingsSection: string;
-}
-
-export function weightedRandomItem(table: { string: string, range: number[] }[], roll: number) {
-
-    // Find the object in the table that corresponds to the roll
-    const item = table.find(({ range }) => range[0] <= roll && roll <= range[1]);
-
-    // Return the item
-    return item?.string;
-}
-
-
-
-export function rollD20(modifier: number) {
-    return clamp(Math.floor((Math.random() * 20) + 1) + modifier, 1, 20);
-}
-
-export function rollD100(modifier: number) {
-    return clamp(Math.floor((Math.random() * 100) + 1) + modifier, 1, 100);
-}
-
-/** Keep a number inside [min, max]. */
-function clamp(value: number, min: number, max: number): number {
-    return Math.min(Math.max(value, min), max);
 }

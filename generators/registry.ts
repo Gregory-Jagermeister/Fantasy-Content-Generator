@@ -11,8 +11,6 @@ import { generateLoot } from "generators/loot";
 import { generatorMetals } from "generators/metal";
 import { generateShipName } from "generators/ship";
 import { generatePlotHook } from "generators/plothook";
-import { dwarfFamilyNames } from "lists/dwarvenFamilyNames";
-import { elfFamilyNames } from "lists/elvenFamilyNames";
 import { familyNameList } from "lists/humanFamilyNames";
 import { titleLastNames } from "lists/titleLastNames";
 import { pick } from "utils/random";
@@ -53,8 +51,8 @@ export const RACES: RaceDef[] = [
     library("Demon", "Demon", "demon", false),
     library("Dragon", "Dragon", "dragon"),
     library("Drow", "Drow", "drow"),
-    library("Dwarf", "Dwarf", "dwarf", true, dwarfFamilyNames),
-    library("Elf", "Elf", "elf", true, elfFamilyNames),
+    library("Dwarf", "Dwarf", "dwarf"),
+    library("Elf", "Elf", "elf"),
     library("Fairy", "Fairy", "fairy"),
     library("Gnome", "Gnome", "gnome"),
     library("Goblin", "Goblin", "goblin", false),

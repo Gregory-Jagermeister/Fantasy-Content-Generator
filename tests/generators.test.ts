@@ -4,7 +4,7 @@ import { DEFAULT_SETTINGS } from "settings/DefaultSetting";
 import { GENERATORS, RACES, RETIRED, RETIRED_KEYS, inlineGenerators, raceName, retiredMessage } from "generators/registry";
 import { SETTLEMENT_TYPES, generateSettlement } from "generators/settlement";
 import { clonePlain } from "settings/settingsData";
-import { dwarfFamilyNames } from "lists/dwarvenFamilyNames";
+import { titleLastNames } from "lists/titleLastNames";
 import { familyNameList } from "lists/humanFamilyNames";
 import keys124 from "./keys-1.2.4.json";
 
@@ -39,15 +39,16 @@ test("inline keys: every 1.2.4 key still works or is retired, plus the corrected
     for (const [k, fn] of Object.entries(gens)) assert.ok(!bad(fn(settings)), k);
 });
 
-test("dwarf and human names use their own lists (not the elf list)", () => {
+test("human names use their own family list; dwarf and elf family names come from the name library", () => {
     const gens = inlineGenerators();
-    const dwarf = RACES.find((r) => r.key === "Dwarf");
     const human = RACES.find((r) => r.key === "Human");
-    assert.equal(dwarf?.race, "dwarf");
     assert.equal(human?.race, "human");
+    for (const r of ["Dwarf", "Elf"]) assert.equal(RACES.find((x) => x.key === r)?.familyList, undefined, r);
     for (let i = 0; i < 20; i++) {
-        const d = gens.DwarfMaleLastname(settings).split(" ");
-        assert.ok(dwarfFamilyNames.includes(d.slice(1).join(" ")), d.join(" "));
+        for (const k of ["DwarfMaleLastname", "DwarfFemaleLastname", "ElfMaleLastname", "ElfFemaleLastname"]) {
+            const n = gens[k](settings);
+            assert.ok(!bad(n) && n.trim().split(/\s+/).length >= 2, `${k}: ${n}`);
+        }
         const h = gens.HumanFemaleLastname(settings).split(" ");
         assert.ok(familyNameList.includes(h.slice(1).join(" ")), h.join(" "));
     }
@@ -78,4 +79,9 @@ test("settlement: type on the ladder, population inside its range", () => {
     }
     const text = inlineGenerators().Settlement(settings);
     assert.match(text, /^Name: .+\nPopulation: [\d,.\s]+\nType: (Thorp|Hamlet|Village|Small Town|Medium Town|Large Town|Small City|Medium City|Large City|Great City|Metropolis)$/);
+});
+
+test("orc family names: no borrowed names, no stray full stops", () => {
+    assert.ok(!titleLastNames.includes("Ravenclaw"));
+    assert.ok(titleLastNames.every((n) => !n.endsWith(".")));
 });
