@@ -1,3 +1,4 @@
+import { pick, capitalize } from "utils/random";
 const adjectives = ["Mighty", "Grand", "Brave", "Fearless", "Majestic", "Mighty", "Powerful", "Glorious", "Magnificent", "Majestic"];
 const nouns = ["Wind", "Wave", "Storm", "Thunder", "Sea", "Ocean", "Voyager", "Adventurer", "Explorer", "Navigator"];
 
@@ -103,9 +104,9 @@ const syllables = ["an", "ar", "ast", "at", "cal", "chi", "cy", "dan", "eir","ba
     "ser", "tor", "tos", "um", "ys", "zor","ka","ra","go","shi","ma","to","zo","ro","lo"];
 
 export function generateShipName() {
-    const adjective = randomItemFromArray(adjectives);
-    const prefix = randomItemFromArray(prefixes);
-    const noun = randomItemFromArray(nouns);
+    const adjective = pick(adjectives);
+    const prefix = pick(prefixes);
+    const noun = pick(nouns);
     let generatedName = '';
     const numSyllables = Math.floor(Math.random() * 2) + 2;
     for (let i = 0; i < numSyllables; i++) {
@@ -116,15 +117,8 @@ export function generateShipName() {
             generatedName += vowels[vowelIndex];
         }
     }
-    generatedName = capitalizeFirstLetter(generatedName);
+    generatedName = capitalize(generatedName);
     return Math.random() < 0.5 ? `${adjective} ${noun} of ${generatedName}` : `${prefix} ${adjective} ${generatedName}`;
 }
 
 
-function randomItemFromArray(array:string[]) {
-  const randomIndex = Math.floor(Math.random() * array.length);
-  return array[randomIndex];
-}
-function capitalizeFirstLetter(string:string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
-}

@@ -1,19 +1,14 @@
 import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, Notice } from "obsidian";
 import type FantasyPlugin from "main";
-import { inlineGenerators } from "generators/registry";
-import { FantasyPluginSettings } from "settings/Datatypes";
+import { rankKeys } from "generators/custom";
 
 /** Type the trigger (default "@") then a generator name, e.g. "@ElfFemale", and pick it to insert a result. */
 export class InlineGeneratorSuggester extends EditorSuggest<string> {
     private readonly plugin: FantasyPlugin;
-    private readonly generators: Record<string, (settings: FantasyPluginSettings) => string>;
-    private readonly keys: string[];
 
     constructor(app: App, plugin: FantasyPlugin) {
         super(app);
         this.plugin = plugin;
-        this.generators = inlineGenerators();
-        this.keys = Object.keys(this.generators);
     }
 
     onTrigger(cursor: EditorPosition, editor: Editor): EditorSuggestTriggerInfo | null {
@@ -29,13 +24,15 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
         };
     }
 
+    /** Names that start with what was typed come first, then names that contain it. */
     getSuggestions(context: EditorSuggestContext): string[] {
-        const q = context.query.toLowerCase();
-        return this.keys.filter((k) => k.toLowerCase().startsWith(q));
+        return rankKeys(this.plugin.inlineKeys(), context.query);
     }
 
     renderSuggestion(value: string, el: HTMLElement): void {
         el.createDiv({ text: value });
+        const custom = this.plugin.customs.active.get(value);
+        if (custom) el.createDiv({ text: custom.name, cls: "fcg-suggestion-note" });
     }
 
     selectSuggestion(value: string): void {
@@ -44,7 +41,7 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
         if (!context) return;
         let text: string;
         try {
-            text = this.generators[value](this.plugin.settings);
+            text = this.plugin.generate(value);
         } catch (e) {
             new Notice(`Couldn't generate ${value}: ${e instanceof Error ? e.message : String(e)}`);
             return;

@@ -63,6 +63,12 @@ export interface FantasyPluginSettings {
     groupSettings: groupGenSettings;
     dungeonSettings: dungeonGenSettings;
     inlineCallout: string;
+    /** Folder holding custom generator notes (subfolders included) */
+    generatorFolder: string;
+    /** Amount the generator window starts with */
+    defaultAmount: number;
+    /** Settings section shown last */
+    settingsSection: string;
 }
 
 export function weightedRandomItem(table: { string: string, range: number[] }[], roll: number) {

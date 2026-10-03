@@ -1,3 +1,4 @@
+import { pick, capitalize } from "utils/random";
 import { catfolkFamilyNames } from "lists/catfolkFamilyNames";
 import { elfFamilyNames } from "lists/elvenFamilyNames";
 import { familyNameList } from "lists/humanFamilyNames";
@@ -21,14 +22,7 @@ const pathfinderRaceMap = [{ race: "aasimars", generator: generateAasimars},
     {race: "tiefling", generator: generateTiefling},
     {race: "undines", generator: generateUndines}];
 
-function randomItemFromArray(array:string[]) {
-    const randomIndex = Math.floor(Math.random() * array.length);
-    return array[randomIndex];
-}
 
-function capitalizeFirstLetter(string:string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
-}
 
 export function generatePathfinderName(race: string, gender: string, familyName: boolean) : string {
     let name = '';
@@ -144,7 +138,7 @@ function generateCatfolk(type: number, genLastName : boolean) {
 				names = nm1[rnd] + nm2[rnd2] + nm3[rnd3] + nm2[rnd4] + nm3[rnd6] + nm2[rnd7] + nm4[rnd5];
 			}
 		}
-        return genLastName ? `${capitalizeFirstLetter(names)}  ${ randomItemFromArray(catfolkFamilyNames) }` : capitalizeFirstLetter(names);
+        return genLastName ? `${capitalize(names)}  ${ pick(catfolkFamilyNames) }` : capitalize(names);
 	}
 }
 
@@ -186,7 +180,7 @@ function generateFetchlings(type: number, genLastName : boolean) {
 			}
 			names = nm1[rnd] + nm2[rnd2] + nm3[rnd3] + nm2[rnd4] + nm4[rnd5];
 		}
-		return genLastName ? `${capitalizeFirstLetter(names)}  ${ randomItemFromArray(familyNameList) }` : capitalizeFirstLetter(names);
+		return genLastName ? `${capitalize(names)}  ${ pick(familyNameList) }` : capitalize(names);
 	}
 }
 
@@ -397,7 +391,7 @@ function generateHobgoblin(type: number, genLastName : boolean) {
 			}
 			names = nm1[rnd] + nm2[rnd2] + nm3[rnd3] + nm2[rnd4] + nm4[rnd5];
 		}
-		return genLastName ? `${capitalizeFirstLetter(names)}  ${ randomItemFromArray(titleLastNames) }` : capitalizeFirstLetter(names);
+		return genLastName ? `${capitalize(names)}  ${ pick(titleLastNames) }` : capitalize(names);
 	}
 }
 
@@ -435,7 +429,7 @@ function generateIfrits(type: number, genLastName : boolean) {
 			const rnd5 = Math.floor(Math.random() * nm4.length);
 			names = nm1[rnd] + nm2[rnd2] + nm3[rnd3] + nm2[rnd4] + nm4[rnd5];
 		}
-		return genLastName ? `${capitalizeFirstLetter(names)}  ${ randomItemFromArray(familyNameList) }` : capitalizeFirstLetter(names);
+		return genLastName ? `${capitalize(names)}  ${ pick(familyNameList) }` : capitalize(names);
 	}
 }
 
@@ -487,7 +481,7 @@ function generateKobalds(type: number, genLastName : boolean) {
 				names = nm1[rnd] + nm2[rnd2] + nm3[rnd3] + nm2[rnd4] + nm3[rnd6] + nm2[rnd7] + nm4[rnd5];
 			}
 		}
-		return genLastName ? `${capitalizeFirstLetter(names)}  ${ randomItemFromArray(titleLastNames) }` : capitalizeFirstLetter(names);
+		return genLastName ? `${capitalize(names)}  ${ pick(titleLastNames) }` : capitalize(names);
 	}
 }
 
@@ -532,7 +526,7 @@ function generateOreads(type: number, genLastName: boolean) {
 
 		let elvishHumanTitleFamilyNames = familyNameList.concat(elfFamilyNames);
 		elvishHumanTitleFamilyNames = elvishHumanTitleFamilyNames.concat(titleLastNames);
-		return genLastName ? `${capitalizeFirstLetter(names)}  ${randomItemFromArray(elvishHumanTitleFamilyNames)}` : capitalizeFirstLetter(names);
+		return genLastName ? `${capitalize(names)}  ${pick(elvishHumanTitleFamilyNames)}` : capitalize(names);
 	}
 }
 
@@ -578,7 +572,7 @@ function generateRatfolk(type: number, genLastName : boolean) {
 				names = nm1[rnd] + nm2[rnd2] + nm3[rnd3] + nm2[rnd4] + nm4[rnd5];
 			}
 		}
-		return genLastName ? `${capitalizeFirstLetter(names)}  ${randomItemFromArray(ratfolkFamilyNames)}` : capitalizeFirstLetter(names);
+		return genLastName ? `${capitalize(names)}  ${pick(ratfolkFamilyNames)}` : capitalize(names);
 	}
 }
 
@@ -618,7 +612,7 @@ function generateSylphs(type: number, genLastName : boolean) {
 		}
 		let elvishHumanTitleFamilyNames = familyNameList.concat(elfFamilyNames);
 		elvishHumanTitleFamilyNames = elvishHumanTitleFamilyNames.concat(titleLastNames);
-		return genLastName ? `${capitalizeFirstLetter(names)}  ${randomItemFromArray(elvishHumanTitleFamilyNames)}` : capitalizeFirstLetter(names);
+		return genLastName ? `${capitalize(names)}  ${pick(elvishHumanTitleFamilyNames)}` : capitalize(names);
 	}
 }
 
@@ -897,7 +891,7 @@ function generateTians(type: number, genLastName : boolean) {
 				names = nm50[rnd] + nm51[rnd2] + nm52[rnd3] + nm51[rnd4] + nm53[rnd5];
 			}
 		}
-		return genLastName ? `${capitalizeFirstLetter(names)}  ${randomItemFromArray(tianFamilyNames)}` : capitalizeFirstLetter(names);
+		return genLastName ? `${capitalize(names)}  ${pick(tianFamilyNames)}` : capitalize(names);
 	}
 }
 
@@ -1013,6 +1007,6 @@ function generateUndines(type: number, genLastName : boolean) {
 		}
 		let elvishHumanTitleFamilyNames = familyNameList.concat(elfFamilyNames);
 		elvishHumanTitleFamilyNames = elvishHumanTitleFamilyNames.concat(titleLastNames);
-		return genLastName ? `${capitalizeFirstLetter(names)}  ${randomItemFromArray(elvishHumanTitleFamilyNames)}` : capitalizeFirstLetter(names);
+		return genLastName ? `${capitalize(names)}  ${pick(elvishHumanTitleFamilyNames)}` : capitalize(names);
 	}
 }

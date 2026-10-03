@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, Platform, PluginSettingTab, Setting } from "obsidian";
 import type FantasyPlugin from "main";
 import { currency } from "./Datatypes";
 import { DEFAULT_SETTINGS } from "./DefaultSetting";
@@ -78,27 +78,114 @@ export class SettingTab extends PluginSettingTab {
         });
     }
 
+    /** Sections of the settings page, in order. */
+    private sections(): { id: string; label: string; render: (el: HTMLElement) => void }[] {
+        return [
+            { id: "general", label: "General", render: (el) => this.generalSection(el) },
+            { id: "custom", label: "Custom generators", render: (el) => this.customSection(el) },
+            { id: "currency", label: "Currency", render: (el) => this.currencySection(el) },
+            ...SECTIONS.map((def) => ({ id: def.key, label: def.label, render: (el: HTMLElement) => this.listSection(el, def) })),
+        ];
+    }
+
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
+        const sections = this.sections();
+        const current = sections.find((x) => x.id === this.plugin.settings.settingsSection) ?? sections[0];
+        const choose = (id: string) => {
+            this.plugin.settings.settingsSection = id;
+            this.save();
+            this.display();
+        };
 
-        new Setting(containerEl)
+        // Tabs on desktop; a dropdown on phones and tablets.
+        if (Platform.isMobile) {
+            new Setting(containerEl).setName("Section").addDropdown((d) => {
+                for (const x of sections) d.addOption(x.id, x.label);
+                d.setValue(current.id).onChange(choose);
+            });
+        } else {
+            const tabs = containerEl.createDiv({ cls: "fcg-tabs" });
+            for (const x of sections) {
+                const tab = tabs.createEl("button", { text: x.label, cls: "fcg-tab" });
+                if (x.id === current.id) tab.addClass("is-active");
+                tab.addEventListener("click", () => choose(x.id));
+            }
+        }
+        current.render(containerEl.createDiv({ cls: "fcg-section" }));
+    }
+
+    private generalSection(el: HTMLElement): void {
+        const s = this.plugin.settings;
+        new Setting(el)
+            .setName("Inline trigger")
+            .setDesc("Type this, then a generator name, to insert a result while writing. Other plugins can use @ too; if suggestions close or never show, pick a different trigger such as ;;.")
+            .addText((t) => t.setValue(s.inlineCallout).onChange((v) => {
+                s.inlineCallout = v;
+                this.save();
+            }));
+        new Setting(el)
+            .setName("Default amount")
+            .setDesc("How many results the generator window makes at first. It then remembers the last amount you used until Obsidian restarts.")
+            .addText((t) => {
+                t.inputEl.type = "number";
+                t.setValue(String(s.defaultAmount)).onChange((v) => {
+                    const n = Math.floor(Number(v));
+                    if (Number.isFinite(n) && n >= 1 && n <= 50) {
+                        s.defaultAmount = n;
+                        this.plugin.lastAmount = null;
+                        this.save();
+                    }
+                });
+            });
+        new Setting(el)
             .setName("Reset to defaults")
-            .setDesc("Put every word list and option back to how the plugin ships.")
+            .setDesc("Put every word list and option back to how the plugin ships. Your custom generator notes are not touched.")
             .addButton((b) => b.setButtonText("Reset").setWarning().onClick(() => {
                 this.plugin.resetSettings().then(() => this.display()).catch((e) => console.error(e));
             }));
+    }
 
-        new Setting(containerEl)
-            .setName("Inline trigger")
-            .setDesc("Type this, then a generator name, to insert a result while writing.")
-            .addText((t) => t.setValue(this.plugin.settings.inlineCallout).onChange((v) => {
-                this.plugin.settings.inlineCallout = v;
+    private customSection(el: HTMLElement): void {
+        const s = this.plugin.settings;
+        const store = this.plugin.customs;
+        new Setting(el)
+            .setName("Generator folder")
+            .setDesc("Notes in this folder (and its subfolders) with fcg-generator in their properties become generators.")
+            .addText((t) => t.setPlaceholder("Generators").setValue(s.generatorFolder).onChange((v) => {
+                s.generatorFolder = v.trim();
                 this.save();
+                store.scheduleReload();
+            }));
+        new Setting(el)
+            .setName("New generator")
+            .setDesc("Creates the folder (with an example) the first time, then a starter note to fill in.")
+            .addButton((b) => b.setButtonText("New generator").setCta().onClick(() => {
+                void this.plugin.newGenerator();
+            }));
+        new Setting(el)
+            .setName("Refresh")
+            .setDesc("Generators update by themselves when their notes change. Use this if something looks out of date.")
+            .addButton((b) => b.setButtonText("Refresh").onClick(() => {
+                store.reload().then(() => this.display()).catch((e) => console.error(e));
             }));
 
-        this.currencySection(containerEl);
-        for (const section of SECTIONS) this.listSection(containerEl, section);
+        new Setting(el).setName(`Found (${store.all.length})`).setHeading();
+        if (!store.all.length) {
+            el.createEl("p", { text: "No generator notes yet.", cls: "setting-item-description" });
+            return;
+        }
+        for (const g of store.all) {
+            const active = store.active.get(g.key) === g;
+            const item = new Setting(el)
+                .setName(active ? `@${g.key}` : `@${g.key} (not in use)`)
+                .setDesc(`${g.name} · ${g.path}`);
+            if (g.problems.length) {
+                const list = item.descEl.createEl("ul", { cls: "fcg-problems" });
+                for (const p of g.problems) list.createEl("li", { text: p });
+            }
+        }
     }
 
     /** Import and export buttons for one part of the settings. */
@@ -129,7 +216,6 @@ export class SettingTab extends PluginSettingTab {
 
     private currencySection(containerEl: HTMLElement): void {
         const s = this.plugin.settings;
-        new Setting(containerEl).setName("Currency").setHeading();
         new Setting(containerEl)
             .setName("Add currency to loot")
             .setDesc("Loot sometimes includes coins from the list below.")
@@ -183,7 +269,6 @@ export class SettingTab extends PluginSettingTab {
     private listSection(containerEl: HTMLElement, def: SectionDef): void {
         const settings = this.plugin.settings as unknown as Record<SectionKey, Record<string, unknown[]>>;
         const defaults = DEFAULT_SETTINGS as unknown as Record<SectionKey, Record<string, unknown[]>>;
-        new Setting(containerEl).setName(def.label).setHeading();
         this.importExport(containerEl, def.file, () => settings[def.key], defaults[def.key], (data) => {
             settings[def.key] = data as Record<string, unknown[]>;
         });

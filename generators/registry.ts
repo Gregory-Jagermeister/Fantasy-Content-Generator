@@ -23,6 +23,7 @@ import { dwarfFamilyNames } from "lists/dwarvenFamilyNames";
 import { elfFamilyNames } from "lists/elvenFamilyNames";
 import { familyNameList } from "lists/humanFamilyNames";
 import { titleLastNames } from "lists/titleLastNames";
+import { pick } from "utils/random";
 
 export type Gender = "male" | "female";
 
@@ -92,10 +93,6 @@ export const RACES: RaceDef[] = [
     library("Orc", "Orc", "orc", false, titleLastNames),
 ];
 
-function pick<T>(list: T[]): T {
-    if (!list.length) throw new Error("This list is empty. Add some entries in the plugin settings.");
-    return list[Math.floor(Math.random() * list.length)];
-}
 
 /** fantasy-name-generator returns an Error instead of throwing; turn that into a throw. */
 function libraryName(race: string, gender: Gender): string {

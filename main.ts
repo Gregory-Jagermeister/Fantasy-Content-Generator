@@ -5,26 +5,84 @@ import { FantasyPluginSettings } from "settings/Datatypes";
 import { DEFAULT_SETTINGS } from "settings/DefaultSetting";
 import { SettingTab } from "settings/SettingsTab";
 import { clonePlain, mergeSettings } from "settings/settingsData";
+import { inlineGenerators } from "generators/registry";
+import { runCustom } from "generators/custom";
+import { CustomGeneratorStore } from "custom/store";
+
+/** What other plugins (for example Templater) can call: app.plugins.plugins["fantasy-content-generator"].api */
+export interface FantasyGeneratorApi {
+	/** One result from any generator key that works inline (built-in or custom). Throws on an unknown key. */
+	generate(key: string): string;
+	/** Every key, built-in first, then custom. */
+	keys(): string[];
+}
 
 export default class FantasyPlugin extends Plugin {
 	settings: FantasyPluginSettings;
+	customs: CustomGeneratorStore;
+	api: FantasyGeneratorApi;
+	/** The generator window remembers the last amount used this session (starts at the Default amount setting). */
+	lastAmount: number | null = null;
+	private builtIns = inlineGenerators();
 
 	async onload() {
 		await this.loadSettings();
+		this.customs = new CustomGeneratorStore(this);
+		this.customs.watch();
+		this.api = {
+			generate: (key: string) => this.generate(key),
+			keys: () => this.inlineKeys(),
+		};
 
 		this.addCommand({
 			id: "open-fantasy-generator",
 			name: "Open generator",
 			callback: () => this.openGenerator(),
 		});
+		this.addCommand({
+			id: "new-generator",
+			name: "New custom generator",
+			callback: () => { void this.newGenerator(); },
+		});
 		this.addRibbonIcon("book", "Open fantasy generator", () => this.openGenerator());
 		this.registerEditorSuggest(new InlineGeneratorSuggester(this.app, this));
 		this.addSettingTab(new SettingTab(this.app, this));
 	}
 
+	/** Keys of the generators that ship with the plugin. */
+	builtInKeys(): string[] {
+		return Object.keys(this.builtIns);
+	}
+
+	/** Every inline key: built-in, then custom. */
+	inlineKeys(): string[] {
+		return [...this.builtInKeys(), ...this.customs.active.keys()];
+	}
+
+	/** One result for an inline key. Throws with a readable message. */
+	generate(key: string): string {
+		const builtIn = this.builtIns[key];
+		if (builtIn) return builtIn(this.settings);
+		const custom = this.customs.active.get(key);
+		if (custom) return runCustom(custom);
+		throw new Error(`There is no generator called "${key}".`);
+	}
+
 	/** Open the generator window; copied results go to the clipboard. */
 	openGenerator(): void {
 		new GeneratorModal(this.app, this, (text) => { void this.copyToClipboard(text); }).open();
+	}
+
+	/** Make a starter generator note (and the folder the first time) and open it. */
+	async newGenerator(): Promise<void> {
+		try {
+			const file = await this.customs.newGenerator();
+			await this.app.workspace.getLeaf(false).openFile(file);
+			new Notice(`Created ${file.path}. Edit the lists, then type @ and its name.`);
+		} catch (e) {
+			console.error("Fantasy Content Generator: couldn't create a generator", e);
+			new Notice(`Couldn't create the generator: ${e instanceof Error ? e.message : String(e)}`);
+		}
 	}
 
 	async copyToClipboard(text: string): Promise<void> {
@@ -50,5 +108,6 @@ export default class FantasyPlugin extends Plugin {
 	async resetSettings(): Promise<void> {
 		this.settings = clonePlain(DEFAULT_SETTINGS);
 		await this.saveSettings();
+		this.customs.scheduleReload();
 	}
 }

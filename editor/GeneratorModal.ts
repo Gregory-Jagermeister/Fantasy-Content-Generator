@@ -1,6 +1,7 @@
 import { App, Modal, Notice, Setting } from "obsidian";
 import type FantasyPlugin from "main";
 import { GENERATORS, Gender, Generated, RACES, raceName } from "generators/registry";
+import { runCustom } from "generators/custom";
 
 /** Most results generated in one go. */
 const MAX_AMOUNT = 50;
@@ -40,6 +41,7 @@ export class GeneratorModal extends Modal {
         };
         for (const g of GENERATORS) group(g.group).createEl("option", { text: g.label, value: `gen:${g.key}` });
         for (const r of RACES) group("Names").createEl("option", { text: r.label, value: `race:${r.key}` });
+        for (const c of this.plugin.customs.active.values()) group("Custom").createEl("option", { text: c.name, value: `custom:${c.key}` });
 
         const optionsEl = contentEl.createDiv();
         select.addEventListener("change", () => this.showOptions(optionsEl, select.value));
@@ -48,16 +50,20 @@ export class GeneratorModal extends Modal {
     private showOptions(el: HTMLElement, choice: string): void {
         el.empty();
         this.rows = [];
-        this.amount = 1;
+        this.amount = this.startAmount();
         if (!choice) return;
 
-        const [kind, key] = choice.split(":");
+        const kind = choice.slice(0, choice.indexOf(":"));
+        const key = choice.slice(choice.indexOf(":") + 1);
         const race = kind === "race" ? RACES.find((r) => r.key === key) : undefined;
         const gen = kind === "gen" ? GENERATORS.find((g) => g.key === key) : undefined;
+        const custom = kind === "custom" ? this.plugin.customs.active.get(key) : undefined;
         const settings = this.plugin.settings;
+        const plain = (text: string): Generated => ({ title: text.split("\n")[0], text });
         const one: (() => Generated) | undefined = race
-            ? () => { const name = raceName(race, this.gender, this.withFamily); return { title: name, text: name }; }
-            : gen ? () => gen.run(settings) : undefined;
+            ? () => plain(raceName(race, this.gender, this.withFamily))
+            : gen ? () => gen.run(settings)
+            : custom ? () => plain(runCustom(custom)) : undefined;
         if (!one) return;
 
         if (race) {
@@ -77,9 +83,10 @@ export class GeneratorModal extends Modal {
             .setDesc(`How many to generate (1 to ${MAX_AMOUNT}).`)
             .addText((t) => {
                 t.inputEl.type = "number";
-                t.setValue("1").onChange((v) => {
+                t.setValue(String(this.amount)).onChange((v) => {
                     const n = Math.floor(Number(v));
                     this.amount = Number.isFinite(n) ? Math.min(Math.max(n, 1), MAX_AMOUNT) : 1;
+                    this.plugin.lastAmount = this.amount;
                 });
             })
             .addButton((b) => b.setButtonText("Generate").setCta().onClick(() => {
@@ -92,6 +99,12 @@ export class GeneratorModal extends Modal {
             }))
             .addButton((b) => b.setButtonText("Copy").onClick(() => this.copySelected()));
         el.appendChild(listEl);
+    }
+
+    /** Last amount used this session, else the Default amount setting. */
+    private startAmount(): number {
+        const n = this.plugin.lastAmount ?? this.plugin.settings.defaultAmount;
+        return Number.isFinite(n) ? Math.min(Math.max(Math.floor(n), 1), MAX_AMOUNT) : 1;
     }
 
     private renderRows(listEl: HTMLElement): void {

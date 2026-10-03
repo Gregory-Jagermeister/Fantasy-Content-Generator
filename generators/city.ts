@@ -1,3 +1,4 @@
+import { capitalize } from "utils/random";
 import { cityGeneratorSetting } from "settings/Datatypes";
 
 export function generateCityName(settings : cityGeneratorSetting) {
@@ -41,11 +42,8 @@ export function generateCityName(settings : cityGeneratorSetting) {
         generatedName += syllables[syllableIndex];
     }
   
-    generatedName = capitalizeFirstLetter(generatedName);
-    prefix = capitalizeFirstLetter(prefix);
+    generatedName = capitalize(generatedName);
+    prefix = capitalize(prefix);
     return numSyllables > 3 ? `${prefix} ${generatedName}` : `${generatedName}${suffix}`;
 }
   
-function capitalizeFirstLetter(string:string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
-}
