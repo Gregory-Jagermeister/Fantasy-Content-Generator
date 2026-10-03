@@ -27,7 +27,7 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
 
     /** Names that start with what was typed come first, then names that contain it. */
     getSuggestions(context: EditorSuggestContext): string[] {
-        return rankKeys([...this.plugin.inlineKeys(), ...this.plugin.retiredKeys()], context.query);
+        return rankKeys([...this.plugin.suggestKeys(), ...this.plugin.retiredKeys()], context.query);
     }
 
     renderSuggestion(value: string, el: HTMLElement): void {

@@ -202,5 +202,6 @@ export const DEFAULT_SETTINGS: FantasyPluginSettings = {
     inlineCallout: "@",
     generatorFolder: "Generators",
     defaultAmount: 1,
-    settingsSection: "general"
+    settingsSection: "general",
+    hiddenGroups: []
 }

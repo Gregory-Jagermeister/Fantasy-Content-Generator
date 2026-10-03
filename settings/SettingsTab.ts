@@ -2,6 +2,7 @@ import { App, Notice, Platform, PluginSettingTab, Setting } from "obsidian";
 import type FantasyPlugin from "main";
 import { currency } from "./Datatypes";
 import { DEFAULT_SETTINGS } from "./DefaultSetting";
+import { builtInGroups } from "generators/registry";
 import { checkImport, parseJsonText, parseListInput, parseWeightedInput, WeightedItem } from "./settingsData";
 
 type SectionKey = "citySettings" | "innSettings" | "drinkSettings" | "lootSettings" | "dungeonSettings";
@@ -133,6 +134,13 @@ export class SettingTab extends PluginSettingTab {
                     }
                 });
             });
+        new Setting(el).setName("Show groups").setDesc("Hidden groups leave the generator window and the inline list. Their generators still work when a note or template calls them.").setHeading();
+        for (const group of builtInGroups()) {
+            new Setting(el).setName(group).addToggle((t) => t.setValue(!s.hiddenGroups.includes(group)).onChange((show) => {
+                s.hiddenGroups = show ? s.hiddenGroups.filter((g) => g !== group) : [...s.hiddenGroups, group];
+                this.save();
+            }));
+        }
         new Setting(el)
             .setName("Reset to defaults")
             .setDesc("Put every word list and option back to how the plugin ships. Your custom generator notes are not touched.")

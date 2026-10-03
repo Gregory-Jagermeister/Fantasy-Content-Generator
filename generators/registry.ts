@@ -162,3 +162,17 @@ export function inlineGenerators(): Record<string, (settings: FantasyPluginSetti
     for (const [alias, target] of Object.entries(ALIASES)) out[alias] = out[target];
     return out;
 }
+
+/** The groups built-in generators belong to, in the order the generator window shows them. */
+export function builtInGroups(): string[] {
+    return [...new Set([...GENERATORS.map((g) => g.group), "Names"])];
+}
+
+/** The group of every built-in inline key (aliases included). */
+export function groupOfKey(): Map<string, string> {
+    const map = new Map<string, string>();
+    for (const g of GENERATORS) map.set(g.key, g.group);
+    for (const k of Object.keys(inlineGenerators())) if (!map.has(k)) map.set(k, "Names");
+    for (const [alias, target] of Object.entries(ALIASES)) map.set(alias, map.get(target) ?? "Names");
+    return map;
+}

@@ -16,6 +16,39 @@ export function generatePlotHook(): string {
 
     const promptIndex = Math.floor(Math.random() * promptArray.length);
 
-    return `${promptArray[promptIndex].title},\n${promptArray[promptIndex].description}`;
+    const hook = promptArray[promptIndex];
+    return tidyHook(hook.title, hook.description, antagonist[antagonistsIndex], location[locationsIndex]);
 }
 
+
+/** "rulers" -> "rulers'", "horde" -> "horde's". */
+export function possessive(word: string): string {
+    return /s$/i.test(word) ? `${word}'` : `${word}'s`;
+}
+
+const escape = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Tidy a plot hook: title on its own line (no trailing comma), the antagonist title-cased in the
+ * title and preceded by "the" in the description, correct possessives, and the location in
+ * lower case mid-sentence.
+ */
+export function tidyHook(title: string, description: string, antagonist: string, location: string): string {
+    const a = escape(antagonist);
+    const titled = antagonist.split(" ").map(capitalize).join(" ");
+    const placeTitled = location.split(" ").map(capitalize).join(" ");
+    const t = title
+        .replace(new RegExp(`${a}'s`, "g"), possessive(titled))
+        .replace(new RegExp(a, "g"), titled)
+        .replace(new RegExp(escape(capitalize(location)), "g"), placeTitled)
+        .replace(new RegExp(`${escape(placeTitled)}'s`, "g"), possessive(placeTitled));
+    const d = description
+        .replace(/ {2,}/g, " ")
+        .replace(new RegExp(`(^|[.!?] )(?:The )?${a}`, "g"), (_m, start: string) => `${start}The ${antagonist}`)
+        .replace(new RegExp(`(^|[^.!?] )(?!(?:the|The) )(\\S+ )${a}`, "g"), (m: string, pre: string, word: string) => /^(the|The) $/.test(word) ? m : `${pre}${word}the ${antagonist}`)
+        .replace(new RegExp(`${a}'s`, "g"), possessive(antagonist))
+        .replace(new RegExp(`(\\S) ${escape(capitalize(location))}\\b`, "g"), `$1 ${location}`)
+        .replace(new RegExp(`${escape(location)}'s`, "gi"), (m: string) => possessive(m.slice(0, -2)))
+        .replace(/ {2,}/g, " ");
+    return `${t}\n${d}`;
+}

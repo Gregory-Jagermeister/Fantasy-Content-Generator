@@ -5,7 +5,7 @@ import { FantasyPluginSettings } from "settings/Datatypes";
 import { DEFAULT_SETTINGS } from "settings/DefaultSetting";
 import { SettingTab } from "settings/SettingsTab";
 import { clonePlain, mergeSettings } from "settings/settingsData";
-import { inlineGenerators, RETIRED_KEYS, retiredMessage } from "generators/registry";
+import { groupOfKey, inlineGenerators, RETIRED_KEYS, retiredMessage } from "generators/registry";
 import { runCustom } from "generators/custom";
 import { CustomGeneratorStore } from "custom/store";
 
@@ -24,6 +24,7 @@ export default class FantasyPlugin extends Plugin {
 	/** The generator window remembers the last amount used this session (starts at the Default amount setting). */
 	lastAmount: number | null = null;
 	private builtIns = inlineGenerators();
+	private groups = groupOfKey();
 
 	async onload() {
 		await this.loadSettings();
@@ -57,6 +58,19 @@ export default class FantasyPlugin extends Plugin {
 	/** Every inline key: built-in, then custom. */
 	inlineKeys(): string[] {
 		return [...this.builtInKeys(), ...this.customs.active.keys()];
+	}
+
+	/** Is this built-in group hidden in settings? */
+	isGroupHidden(group: string): boolean {
+		return this.settings.hiddenGroups.includes(group);
+	}
+
+	/** Keys for the inline list: hidden groups left out (they still work when called). */
+	suggestKeys(): string[] {
+		return this.inlineKeys().filter((k) => {
+			const group = this.groups.get(k);
+			return !group || this.customs.active.has(k) || !this.isGroupHidden(group);
+		});
 	}
 
 	/** The key as written in a note ({@drinks}), matched to a real key ignoring case. */

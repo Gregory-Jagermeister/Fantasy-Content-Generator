@@ -183,22 +183,35 @@ export interface NameModel {
     capital: boolean;
 }
 
+/**
+ * Split text into the characters a reader sees: "ï" written as i + ¨ stays one character, and so do
+ * "l̥" and "kʷ" (a mark or small modifier letter joins the letter before it). Text is normalised first.
+ */
+export function graphemes(text: string): string[] {
+    const out: string[] = [];
+    for (const ch of Array.from(text.normalize("NFC"))) {
+        if (out.length && /[\p{M}\p{Lm}]/u.test(ch)) out[out.length - 1] += ch;
+        else out.push(ch);
+    }
+    return out;
+}
+
 export function buildModel(samples: string[]): NameModel {
-    const clean = samples.map((s) => s.trim()).filter(Boolean);
+    const clean = samples.map((s) => s.trim().normalize("NFC")).filter(Boolean);
     const orders: Map<string, Map<string, number>>[] = [];
     for (let k = 0; k <= ORDER; k++) orders.push(new Map());
     for (const sample of clean) {
-        const letters = [...START.repeat(ORDER), ...Array.from(sample.toLowerCase()), END];
+        const letters = [...START.repeat(ORDER), ...graphemes(sample.toLowerCase()), END];
         for (let i = ORDER; i < letters.length; i++) {
             for (let k = 1; k <= ORDER; k++) {
-                const ctx = letters.slice(i - k, i).join("");
+                const ctx = letters.slice(i - k, i).join("\u0001");
                 const table = orders[k].get(ctx) ?? new Map<string, number>();
                 table.set(letters[i], (table.get(letters[i]) ?? 0) + 1);
                 orders[k].set(ctx, table);
             }
         }
     }
-    const lengths = clean.map((s) => Array.from(s).length);
+    const lengths = clean.map((s) => graphemes(s).length);
     const capitals = clean.filter((s) => s.charAt(0) !== s.charAt(0).toLowerCase()).length;
     return {
         orders,
@@ -216,7 +229,7 @@ export function buildModel(samples: string[]): NameModel {
 function nextLetter(model: NameModel, history: string[]): string | undefined {
     const top = model.samples.size >= 50 ? ORDER : 2;
     for (let k = top; k >= 1; k--) {
-        const table = model.orders[k].get(history.slice(-k).join(""));
+        const table = model.orders[k].get(history.slice(-k).join("\u0001"));
         if (table?.size) return pickWeighted([...table].map(([item, weight]) => ({ item, weight })));
     }
     return undefined;

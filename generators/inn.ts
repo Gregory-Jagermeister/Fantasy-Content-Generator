@@ -1,4 +1,5 @@
 import { innGeneratorSettings } from "settings/Datatypes";
+import { pick } from "utils/random";
 interface Inn {
     name: string;
     description: string;
@@ -6,33 +7,18 @@ interface Inn {
   }
     
 export function generateInn(settings: innGeneratorSettings): Inn {
-  
-    const prefixes = settings.prefixes;
-    const innType = settings.innType
-    const nouns = settings.nouns
-    const descriptions = settings.desc;
-    const rumor = settings.rumors;
-
-    const prefixIndex = Math.floor(Math.random() * prefixes.length);
-    const innTypeIndex = Math.floor(Math.random() * innType.length);
-    const nounIndex = Math.floor(Math.random() * nouns.length);
-    const descriptionIndex = Math.floor(Math.random() * descriptions.length);
-    const rumorsIndexes = generateUniqueNumbers(0, rumor.length);
-  
+    const { prefixes, innType, nouns, desc, rumors } = settings;
     return {
-      name: prefixes[prefixIndex] + " " + nouns[nounIndex] + " " + innType[innTypeIndex],
-      description: descriptions[descriptionIndex],
-      rumors:[rumor[rumorsIndexes[0]], rumor[rumorsIndexes[1]], rumor[rumorsIndexes[2]]],
+        name: `${pick(prefixes)} ${pick(nouns)} ${pick(innType)}`,
+        description: pick(desc),
+        rumors: pickDistinct(rumors, 3),
     };
 }
-  
-function generateUniqueNumbers(min: number, max:number) {
-    const numbers: number[] = [];
-    while (numbers.length < 3) {
-      const randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;
-      if (!numbers.includes(randomNumber)) {
-        numbers.push(randomNumber);
-      }
-    }
-    return numbers;
-  }
+
+/** Up to `n` different items from a list (fewer if it has fewer different items). */
+export function pickDistinct<T>(list: readonly T[], n: number): T[] {
+    const pool = [...new Set(list)];
+    const out: T[] = [];
+    while (out.length < n && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    return out;
+}

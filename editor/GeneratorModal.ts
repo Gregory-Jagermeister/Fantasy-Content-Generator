@@ -38,8 +38,8 @@ export class GeneratorModal extends Modal {
             if (!g) { g = select.createEl("optgroup", { attr: { label } }); groups.set(label, g); }
             return g;
         };
-        for (const g of GENERATORS) group(g.group).createEl("option", { text: g.label, value: `gen:${g.key}` });
-        for (const r of RACES) group("Names").createEl("option", { text: r.label, value: `race:${r.key}` });
+        for (const g of GENERATORS) if (!this.plugin.isGroupHidden(g.group)) group(g.group).createEl("option", { text: g.label, value: `gen:${g.key}` });
+        if (!this.plugin.isGroupHidden("Names")) for (const r of RACES) group("Names").createEl("option", { text: r.label, value: `race:${r.key}` });
         for (const c of this.plugin.customs.active.values()) group("Custom").createEl("option", { text: c.name, value: `custom:${c.key}` });
 
         const optionsEl = contentEl.createDiv();

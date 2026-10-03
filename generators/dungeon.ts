@@ -18,7 +18,7 @@ export function generateDungeonName(settings: dungeonGenSettings): string {
 
     if (usePrefix) {
         result = {
-            name: `${prefix[prefixIndex]} of the ${adjective[adjIndex]}  ${noun[nounIndex]}`,
+            name: `${prefix[prefixIndex]} of the ${adjective[adjIndex]} ${noun[nounIndex]}`,
             description: generateDungeonDescription(locations[locIndex], prefix[prefixIndex], randomDesc[randomDescIndex])
         };
     } else {
@@ -36,9 +36,9 @@ function generateDungeonDescription(location: string, dungeonType: string, rando
         `Located in ${location}, this ${dungeonType} is known for ${randomDesc}.`,
         `A ${dungeonType} that is known for ${randomDesc}.`,
         `In the heart of ${location} lies this ${dungeonType}, notorious for ${randomDesc}.`,
-        `Deep within ${location}, the ${dungeonType} is feared for its ${randomDesc}.`,
-        `This ${dungeonType} located in ${location} is infamous for its ${randomDesc}.`,
-        `The ${dungeonType} in ${location} is a place to be reckoned with, famous for its ${randomDesc}.`
+        `Deep within ${location}, the ${dungeonType} is feared for ${randomDesc}.`,
+        `This ${dungeonType} located in ${location} is infamous for ${randomDesc}.`,
+        `The ${dungeonType} in ${location} is a place to be reckoned with, famous for ${randomDesc}.`
     ];
 
     const templateIndex = Math.floor(Math.random() * templates.length);

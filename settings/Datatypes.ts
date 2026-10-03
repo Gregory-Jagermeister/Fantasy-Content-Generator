@@ -59,4 +59,6 @@ export interface FantasyPluginSettings {
     defaultAmount: number;
     /** Settings section shown last */
     settingsSection: string;
+    /** Built-in groups hidden from the generator window and the inline list */
+    hiddenGroups: string[];
 }
