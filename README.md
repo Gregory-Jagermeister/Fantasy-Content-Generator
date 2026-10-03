@@ -19,6 +19,13 @@ The names for Angel, Cave person, Dark elf, Demon, Dragon, Drow, Dwarf, Elf, Fai
 
 ## Changelog
 
+### 1.4.0
+- **Note engine** for custom generators: dice and ranges, calls to other generators (`{@Key}`), repeats (`{3 x Drinks}`), tables rolled with a die (`## Size (d20)`), modifiers, lookups, remembered values and `{again}`. Notes from 1.3 work as before. See **Note engine**.
+- **Naming kits**: lists ending in `(learn)` make new names in the style of your samples. See **Naming kits**.
+- **Copy to my folder** for Drinks, Dungeons and labyrinths, Inns and taverns, Metals and Ship.
+- **Show groups** in General settings to hide groups you don't use.
+- Fixed: inn rumours could show "undefined" or freeze with fewer than three rumours; double spaces in drink and dungeon names; "famous for its …" in dungeon descriptions; plot hooks ("rulers's", a trailing comma, missing "the", capitalised places mid-sentence).
+
 ### 1.3.3
 - Dwarf and Elf family names now come from the same name library as the other races.
 - Small fixes to the Orc family names.
@@ -81,11 +88,49 @@ Type `@AshbornNames` in any note to insert a result, or pick it under **Custom**
 | `fcg-key: <Key>` | Optional inline key. Without it the key is the name with each word capitalised and no spaces |
 | `pattern: "..."` | Always used |
 | `patterns:` (a list) | One is picked at random each time; list one twice to make it twice as likely |
-| `{List}` | One item from the list under `## List` |
-| `{A\|B}` | One item from either list |
+| `fcg-capitalize: true` | Capitalise the first letter of each result |
+| `pattern: \|` | A pattern over several lines (Markdown kept) |
 | `- item \| 3` | That item is three times as likely |
 
-Everything else in the note is ignored. Problems (a missing list, a key already in use) are listed in **Settings › Custom generators**.
+Everything else in the note is ignored. Problems (a missing list, a table with gaps, a key already in use) are listed in **Settings › Custom generators**.
+
+### Note engine
+
+Patterns (in the properties and inside list items) can use:
+
+| Write | Does | Example |
+|---|---|---|
+| `{List}` / `{A\|B}` | one item from the list (or either list) | `{First} {Family}` |
+| `{@Key}` | another generator's result, built-in or custom | `{@InnsTaverns}` |
+| `{2d6}` `{1d8+4}` `{1-4}` | dice, sums and ranges | `{2d6} shops` |
+| `{N x List}` | N different items: a bullet list when alone on its line, "a, b and c" in a sentence | `{2-4 x Drinks}` |
+| `## Size (d20)` then `- 1-2: Tiny` | a table rolled with its die | `{Size}` |
+| `{Table + $x}` `{Table - 2}` | roll a table with a modifier, kept inside its first and last rows | `{Wealth + $wealth}` |
+| `{Table with d4}` | roll a table with another die | `{Specialty with d4}` |
+| `- Small: {1d8+4}` and `{List: key}` | look up a row by its key (`$x` works as the key) | `{Shop count: $size}` |
+| `{$x = …}` `{$x += 2}` `{$x -= 2}` | remember a number or a result (prints nothing) | `{$size = Size}` |
+| `{$x}` | print what was remembered | `Size: {$size}` |
+| `{again}` | in a table row: roll the same table again | `- 20: {again} and {again}` |
+| `\{` `\}` | a literal brace | |
+
+Values from `$` belong to one result; `{@Key}` runs the other generator with its own values. Calls nest at most 10 deep and a repeat makes at most 100 items, so a mistake shows a message instead of freezing.
+
+### Naming kits
+
+Two ways to make names that sound like one people:
+
+- **Sound templates**: lists of sounds joined by a pattern, such as `{C}{V}{C}{V}` with `fcg-capitalize: true`.
+- **Learn from samples**: a list whose heading ends in `(learn)` holds at least 10 names you like. Picking from it makes a **new** name in the same style, never a copy of a sample. `(learn 4-9)` limits the length (default: your shortest to longest sample). Several names at once try to start with different letters.
+
+The **Example naming kit** note (made with the generator folder) shows both. A language tool such as Vulgarlang can make word lists to take samples from.
+
+### Copy to my folder
+
+In the generator window, Drinks, Dungeons and labyrinths, Inns and taverns, Metals and Ship have **Copy to my folder**: it writes the generator as a note (using your current word lists) that you can edit, as `@DrinksCopy` and so on. The built-in one is unchanged.
+
+### Show groups
+
+**Settings › General › Show groups** hides groups you never use from the generator window and the `@` list. Their generators still work when a note or template calls them.
 
 ## Templater
 

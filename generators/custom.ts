@@ -195,20 +195,23 @@ Type @${keyFromName(name)} in any note to use this generator.
 export const EXAMPLE_NOTE = `---
 fcg-generator: Example generator
 fcg-key: Example
-patterns:
-  - "{First} {Family}"
-  - "{First} {Family}"
-  - "Captain {Family}"
+pattern: |
+  {First} {Family}, {Role}
+  Carries {1d6} coins and {2 x Item}.
+  Mood: {Mood}
 ---
 # How this generator works
 
-Type **@Example** in any note (or pick it in the generator window under Custom).
+Type **@Example** in any note (or pick it in the generator window under Custom). Replace the placeholder words with your own.
 
 - \`fcg-generator\` names the generator. \`fcg-key\` sets the inline key; without it the key is the name without spaces (here it would be @ExampleGenerator).
-- \`pattern\` (one) or \`patterns\` (several, one picked at random each time). Listing a pattern twice makes it twice as likely.
-- \`{List}\` picks from the list under \`## List\`. \`{A|B}\` picks from either list.
-- \`- item | 3\` makes an item three times as likely.
-- Everything else in the note (like this text) is ignored.
+- \`pattern\` is used every time; \`pattern: |\` lets it run over several lines. \`patterns\` (a list) picks one at random each time.
+- \`{List}\` picks from the list under \`## List\`. \`{A|B}\` picks from either list. \`- item | 3\` makes an item three times as likely.
+- \`{1d6}\`, \`{2d6+1}\`, \`{1-4}\` roll dice or a range. \`{2 x Item}\` gives two different items.
+- A heading like \`## Mood (d6)\` makes a table: each row starts with the numbers it covers.
+- \`{@Key}\` puts another generator's result here, built-in or yours (for example \`{@Drinks}\`).
+- \`{$gold = 2d6}\` remembers a number or result; \`{$gold}\` prints it; \`{$gold += 1}\` changes it; \`{Mood + $gold}\` rolls a table with a modifier.
+- Everything else in the note (like this text) is ignored. See the plugin's README for the full list.
 
 ## First
 - First A
@@ -218,6 +221,20 @@ Type **@Example** in any note (or pick it in the generator window under Custom).
 ## Family
 - Family A
 - Family B
+
+## Role
+- Role A
+- Role B
+
+## Item
+- Item A
+- Item B
+- Item C
+
+## Mood (d6)
+- 1-2: Mood A
+- 3-5: Mood B
+- 6: Mood C
 `;
 
 /** Example naming kit added the first time the generator folder is created (letters only; your samples go in the code block's place). */
