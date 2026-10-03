@@ -1,8 +1,8 @@
 import { pick, capitalize } from "utils/random";
-const adjectives = ["Mighty", "Grand", "Brave", "Fearless", "Majestic", "Mighty", "Powerful", "Glorious", "Magnificent", "Majestic"];
-const nouns = ["Wind", "Wave", "Storm", "Thunder", "Sea", "Ocean", "Voyager", "Adventurer", "Explorer", "Navigator"];
+export const SHIP_ADJECTIVES = ["Mighty", "Grand", "Brave", "Fearless", "Majestic", "Mighty", "Powerful", "Glorious", "Magnificent", "Majestic"];
+export const SHIP_NOUNS = ["Wind", "Wave", "Storm", "Thunder", "Sea", "Ocean", "Voyager", "Adventurer", "Explorer", "Navigator"];
 
-const prefixes = ["AE", "AFS", "AHT", "AHTS", "AO","AE",
+export const SHIP_PREFIXES = ["AE", "AFS", "AHT", "AHTS", "AO","AE",
 "AFS",
 "AHT",
 "AHTS",
@@ -97,24 +97,24 @@ const prefixes = ["AE", "AFS", "AHT", "AHTS", "AO","AE",
 "YOS",
 ]
 
-const vowels = ['a', 'e', 'i', 'o', 'u'];
-const syllables = ["an", "ar", "ast", "at", "cal", "chi", "cy", "dan", "eir","ba","th","tho","tri","tr", "el", "end",
+export const SHIP_VOWELS = ['a', 'e', 'i', 'o', 'u'];
+export const SHIP_SYLLABLES = ["an", "ar", "ast", "at", "cal", "chi", "cy", "dan", "eir","ba","th","tho","tri","tr", "el", "end",
 "ent", "est", "ian", "ic", "il", "in", "ir", "it", "kil", "kor", "ler", "lor",
 "man", "mar", "mei", "mon", "ner", "or", "ore", "rak", "ri", "ris", "ry", "se",
     "ser", "tor", "tos", "um", "ys", "zor","ka","ra","go","shi","ma","to","zo","ro","lo"];
 
 export function generateShipName() {
-    const adjective = pick(adjectives);
-    const prefix = pick(prefixes);
-    const noun = pick(nouns);
+    const adjective = pick(SHIP_ADJECTIVES);
+    const prefix = pick(SHIP_PREFIXES);
+    const noun = pick(SHIP_NOUNS);
     let generatedName = '';
     const numSyllables = Math.floor(Math.random() * 2) + 2;
     for (let i = 0; i < numSyllables; i++) {
-        const syllableIndex = Math.floor(Math.random() * syllables.length);
-        generatedName += syllables[syllableIndex];
+        const syllableIndex = Math.floor(Math.random() * SHIP_SYLLABLES.length);
+        generatedName += SHIP_SYLLABLES[syllableIndex];
         if (i < numSyllables - 1) {
-            const vowelIndex = Math.floor(Math.random() * vowels.length);
-            generatedName += vowels[vowelIndex];
+            const vowelIndex = Math.floor(Math.random() * SHIP_VOWELS.length);
+            generatedName += SHIP_VOWELS[vowelIndex];
         }
     }
     generatedName = capitalize(generatedName);

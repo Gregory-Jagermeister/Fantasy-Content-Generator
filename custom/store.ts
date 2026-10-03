@@ -1,5 +1,6 @@
 import { normalizePath, TAbstractFile, TFile, TFolder } from "obsidian";
 import type FantasyPlugin from "main";
+import { copyNote } from "generators/copies";
 import { CustomGenerator, EXAMPLE_NAMING_KIT, EXAMPLE_NOTE, parseGeneratorNote, resolveCustom, starterNote } from "generators/custom";
 
 /** Keeps the custom generators from the generator folder up to date. */
@@ -67,11 +68,8 @@ export class CustomGeneratorStore {
         this.all = gens.sort((a, b) => a.path.localeCompare(b.path));
     }
 
-    /**
-     * Create the generator folder (with the example note the first time) and a new starter note.
-     * @returns the new note
-     */
-    async newGenerator(): Promise<TFile> {
+    /** The generator folder, created (with the example notes) if it doesn't exist yet. */
+    private async ensureFolder(): Promise<string> {
         const { vault } = this.plugin.app;
         const folder = this.folder() || "Generators";
         if (!this.plugin.settings.generatorFolder) {
@@ -83,6 +81,34 @@ export class CustomGeneratorStore {
             await vault.create(`${folder}/Example generator.md`, EXAMPLE_NOTE);
             await vault.create(`${folder}/Example naming kit.md`, EXAMPLE_NAMING_KIT);
         }
+        return folder;
+    }
+
+    /**
+     * Write an editable copy of a built-in generator into the generator folder.
+     * @returns the new note, or null if that generator can't be copied
+     */
+    async copyBuiltIn(key: string): Promise<TFile | null> {
+        const note = copyNote(key, this.plugin.settings);
+        if (!note) return null;
+        const { vault } = this.plugin.app;
+        const folder = await this.ensureFolder();
+        let path = `${folder}/${note.name}.md`;
+        let text = note.text;
+        for (let n = 2; vault.getAbstractFileByPath(path); n++) {
+            path = `${folder}/${note.name} ${n}.md`;
+            text = note.text.replace(`fcg-key: ${note.key}`, `fcg-key: ${note.key}${n}`).replace(`(my copy)"`, `(my copy ${n})"`).replace(`@${note.key}**`, `@${note.key}${n}**`);
+        }
+        return vault.create(path, text);
+    }
+
+    /**
+     * Create the generator folder (with the example note the first time) and a new starter note.
+     * @returns the new note
+     */
+    async newGenerator(): Promise<TFile> {
+        const { vault } = this.plugin.app;
+        const folder = await this.ensureFolder();
         let n = 1;
         let path = `${folder}/New generator.md`;
         while (vault.getAbstractFileByPath(path)) path = `${folder}/New generator ${++n}.md`;

@@ -1,6 +1,7 @@
 import { App, Modal, Notice, Setting } from "obsidian";
 import type FantasyPlugin from "main";
 import { GENERATORS, Gender, Generated, RACES, raceName } from "generators/registry";
+import { COPYABLE } from "generators/copies";
 
 /** Most results generated in one go. */
 const MAX_AMOUNT = 50;
@@ -104,6 +105,15 @@ export class GeneratorModal extends Modal {
                 this.renderRows(listEl);
             }))
             .addButton((b) => b.setButtonText("Copy").onClick(() => this.copySelected()));
+        if (gen && COPYABLE[gen.key]) {
+            new Setting(el)
+                .setName("Make it your own")
+                .setDesc("Copy this generator into your generator folder as a note you can edit. The built-in one stays as it is.")
+                .addButton((b) => b.setButtonText("Copy to my folder").onClick(() => {
+                    this.close();
+                    void this.plugin.copyBuiltIn(gen.key);
+                }));
+        }
         el.appendChild(listEl);
     }
 

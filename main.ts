@@ -103,6 +103,19 @@ export default class FantasyPlugin extends Plugin {
 		throw new Error(`There is no generator called "${key}".`);
 	}
 
+	/** Write an editable copy of a built-in generator into the generator folder and open it. */
+	async copyBuiltIn(key: string): Promise<void> {
+		try {
+			const file = await this.customs.copyBuiltIn(key);
+			if (!file) { new Notice("That generator can't be copied."); return; }
+			await this.app.workspace.getLeaf(false).openFile(file);
+			new Notice(`Copied to ${file.path}.`);
+		} catch (e) {
+			console.error("Fantasy Content Generator: couldn't copy the generator", e);
+			new Notice(`Couldn't copy the generator: ${e instanceof Error ? e.message : String(e)}`);
+		}
+	}
+
 	/** Open the generator window; copied results go to the clipboard. */
 	openGenerator(): void {
 		new GeneratorModal(this.app, this, (text) => { void this.copyToClipboard(text); }).open();
