@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_SETTINGS } from "settings/DefaultSetting";
-import { GENERATORS, RACES, RETIRED_KEYS, inlineGenerators, raceName, retiredMessage } from "generators/registry";
+import { GENERATORS, RACES, RETIRED, RETIRED_KEYS, inlineGenerators, raceName, retiredMessage } from "generators/registry";
 import { SETTLEMENT_TYPES, generateSettlement } from "generators/settlement";
 import { clonePlain } from "settings/settingsData";
 import { dwarfFamilyNames } from "lists/dwarvenFamilyNames";
@@ -33,8 +33,8 @@ test("inline keys: every 1.2.4 key still works or is retired, plus the corrected
     const gens = inlineGenerators();
     for (const k of keys124) assert.ok(k in gens || RETIRED_KEYS.includes(k), `missing ${k}`);
     for (const k of RETIRED_KEYS) assert.ok(!(k in gens), `retired key still built in: ${k}`);
-    assert.equal(RETIRED_KEYS.length, 35);
-    assert.equal(Object.keys(gens).length, 74 + 1);
+    assert.equal(RETIRED_KEYS.length, 37);
+    assert.equal(Object.keys(gens).length, 72 + 1);
     assert.deepEqual(Object.keys(gens).filter((k) => !(keys124).includes(k)), ["DungeonsLabyrinths"]);
     for (const [k, fn] of Object.entries(gens)) assert.ok(!bad(fn(settings)), k);
 });
@@ -61,6 +61,10 @@ test("retired keys are 1.2.4 keys and explain themselves", () => {
     for (const k of RETIRED_KEYS) assert.ok(keys124.includes(k), k);
     assert.equal(retiredMessage("Catfolk"), "@Catfolk was removed in 1.3.1. See the plugin's README.");
     assert.equal(retiredMessage("Catfolk", "!"), "!Catfolk was removed in 1.3.1. See the plugin's README.");
+    assert.equal(retiredMessage("Religion"), "@Religion was removed in 1.3.2. See the plugin's README.");
+    assert.equal(RETIRED.Groups, "1.3.2");
+    assert.equal(RETIRED.TradingPost, "1.3.1");
+    assert.ok(!GENERATORS.some((g) => g.group === "Groups and religions"));
 });
 
 test("settlement: type on the ladder, population inside its range", () => {

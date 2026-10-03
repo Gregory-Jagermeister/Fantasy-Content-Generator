@@ -10,8 +10,6 @@ import { generatorDrinks } from "generators/drink";
 import { generateLoot } from "generators/loot";
 import { generatorMetals } from "generators/metal";
 import { generateShipName } from "generators/ship";
-import { generatorGroups } from "generators/groups";
-import { generatorReligions } from "generators/religions";
 import { generatePlotHook } from "generators/plothook";
 import { dwarfFamilyNames } from "lists/dwarvenFamilyNames";
 import { elfFamilyNames } from "lists/elvenFamilyNames";
@@ -116,26 +114,29 @@ export const GENERATORS: GeneratorDef[] = [
     { key: "LootTreasure", label: "Loot and treasure", group: "Objects and vehicles", run: (s) => plain(generateLoot(s.enableCurrency, s.currencyFrequency, s.currencyTypes, s.lootSettings)) },
     { key: "Metals", label: "Metals", group: "Objects and vehicles", run: () => plain(generatorMetals()) },
     { key: "Ship", label: "Ship", group: "Objects and vehicles", run: () => plain(generateShipName()) },
-    { key: "Groups", label: "Groups", group: "Groups and religions", run: (s) => plain(generatorGroups(s.groupSettings)) },
-    { key: "Religion", label: "Religion", group: "Groups and religions", run: () => plain(generatorReligions()) },
     { key: "PlotStoryHooks", label: "Plot and story hooks", group: "Story tools", run: () => plain(generatePlotHook()) },
 ];
 
 /**
- * Inline keys retired in 1.3.1, to be rewritten in a later update.
+ * Inline keys retired in 1.3.1 and 1.3.2 (key -> version), to be rewritten in a later update.
  * They still show in the inline list, marked retired; picking one explains why instead of inserting text.
  * A custom generator note may reuse any of these keys.
  */
-export const RETIRED_IN = "1.3.1";
-export const RETIRED_KEYS: readonly string[] = [
+const RETIRED_1_3_1: string[] = [
     ...["Aasimars", "Catfolk", "Fetchlings", "HalfElf", "HalfOrc", "Hobgoblin", "Ifrits", "Kobalds", "Oreads",
         "Ratfolk", "Sylphs", "Tengu", "Tians", "Tiefling", "Undines"].flatMap((k) => [k, `${k}Lastname`]),
     "Airships", "Artifacts", "AnimalGroups", "MagicalTrees", "TradingPost",
 ];
+const RETIRED_1_3_2: string[] = ["Religion", "Groups"];
+export const RETIRED: Readonly<Record<string, string>> = {
+    ...Object.fromEntries(RETIRED_1_3_1.map((k): [string, string] => [k, "1.3.1"])),
+    ...Object.fromEntries(RETIRED_1_3_2.map((k): [string, string] => [k, "1.3.2"])),
+};
+export const RETIRED_KEYS: readonly string[] = Object.keys(RETIRED);
 
 /** What to tell someone who picks a retired key. */
 export function retiredMessage(key: string, trigger = "@"): string {
-    return `${trigger}${key} was removed in ${RETIRED_IN}. See the plugin's README.`;
+    return `${trigger}${key} was removed in ${RETIRED[key] ?? "an earlier version"}. See the plugin's README.`;
 }
 
 /** Inline keys kept from older versions that now point at a renamed key. */

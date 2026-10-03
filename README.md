@@ -19,6 +19,10 @@ The names for Angel, Cave person, Dark elf, Demon, Dragon, Drow, Dwarf, Elf, Fai
 
 ## Changelog
 
+### 1.3.2
+- **Religion** and **Groups** have been retired so they can be rewritten from scratch in a later update (see **TO-DO**). `@Religion` and `@Groups` show **Retired in 1.3.2** in the list.
+- The **Groups** settings section has gone. If you edited its lists, your words are still in the plugin's data file; you can turn them into a custom generator note (see **Custom generators** below).
+
 ### 1.3.1
 - **Some generators have been retired** so they can be rewritten from scratch in a later update (see **TO-DO**):
   - Names: Aasimar, Catfolk, Fetchling, Half-elf, Half-orc, Hobgoblin, Ifrit, Kobold, Oread, Ratfolk, Sylph, Tengu, Tian, Tiefling, Undine
@@ -97,7 +101,6 @@ In the settings of the plugin you will Find settings and options to add your own
 - Inn and Tavern generator
 - Settlement Generator
 - Drink Generator
-- Group Generator.
 - Currency.
 - Dungeon Generator.
 
@@ -124,7 +127,6 @@ Below is a table for all the settings in this plugin
 | Inn & Taverns | Modify Arrays of Prefixes, Types, Nouns, Descriptions and Rumors that will generate for Inns and Taverns.|
 | Drinks | Modify an array of both adjectives and nouns that will be used for the drinks generator |
 | Loot | Modify an array of both adjectives and nouns that will be used for the loot generator |
-| Group | adjust the Adjectives, Nouns, Plural Nouns, Group Types and Single Descriptors for the group generator|
 | Dungeon | adjust the Adjectives, Nouns, Locations, Dungeon types and Random Descriptions used by the Dungeon Generator.|
 
 ## TO-DO
@@ -136,9 +138,10 @@ Below is a table for all the settings in this plugin
   - ~~Drink Generator~~
   - ~~Group Generator.~~
 - ~~Randomization within a note.~~
-- Rewrite the generators retired in 1.3.1:
+- Rewrite the generators retired in 1.3.1 and 1.3.2:
   - Names: Aasimar, Catfolk, Fetchling, Half-elf, Half-orc, Hobgoblin, Ifrit, Kobold, Oread, Ratfolk, Sylph, Tengu, Tian, Tiefling, Undine
   - Airships, Artifacts, Animal groups, Magical trees, Trading post
+  - Religion, Groups
 - Possibly more Generation type.
 - Better UI
 - ~~JSON Import And Export~~

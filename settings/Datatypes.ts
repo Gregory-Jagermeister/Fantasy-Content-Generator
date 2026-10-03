@@ -6,15 +6,6 @@ export type currency = {
     rarity: string
 }
 
-// Datatype for collecting group settings
-export type groupGenSettings = {
-    adj: string[],
-    nouns: string[],
-    nounsP: string[],
-    groupTypes: string[],
-    singleDescriptors: string[]
-}
-
 // Datatype for collecting dungeon settings
 export type dungeonGenSettings = {
     dungeonTypes: string[],
@@ -60,7 +51,6 @@ export interface FantasyPluginSettings {
     innSettings: innGeneratorSettings;
     drinkSettings: drinkGeneratorSettings;
     lootSettings: lootTables;
-    groupSettings: groupGenSettings;
     dungeonSettings: dungeonGenSettings;
     inlineCallout: string;
     /** Folder holding custom generator notes (subfolders included) */

@@ -42,3 +42,11 @@ test("import: bad JSON and wrong shapes give a message", () => {
     assert.equal(checkImport(DEFAULT_SETTINGS.currencyTypes, [{ name: "gp", rarity: "common" }]), null);
     assert.match(checkImport(DEFAULT_SETTINGS.currencyTypes, {}) ?? "", /list/);
 });
+
+test("1.3.2: saved data from older versions with Groups lists still loads, and the lists are kept", () => {
+    const saved = { groupSettings: { adj: ["mine"] }, dungeonSettings: { nouns: ["Wyrm"] }, settingsSection: "groupSettings" };
+    const merged = mergeSettings(DEFAULT_SETTINGS, saved) as unknown as Record<string, unknown>;
+    assert.deepEqual(merged.groupSettings, { adj: ["mine"] });
+    assert.ok(!("groupSettings" in DEFAULT_SETTINGS));
+    assert.deepEqual((merged.dungeonSettings as { nouns: string[] }).nouns, ["Wyrm"]);
+});

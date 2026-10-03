@@ -4,7 +4,7 @@ import { currency } from "./Datatypes";
 import { DEFAULT_SETTINGS } from "./DefaultSetting";
 import { checkImport, parseJsonText, parseListInput, parseWeightedInput, WeightedItem } from "./settingsData";
 
-type SectionKey = "citySettings" | "innSettings" | "drinkSettings" | "lootSettings" | "groupSettings" | "dungeonSettings";
+type SectionKey = "citySettings" | "innSettings" | "drinkSettings" | "lootSettings" | "dungeonSettings";
 
 interface ListDef {
     /** Field name inside the section */
@@ -31,12 +31,6 @@ const SECTIONS: SectionDef[] = [
     },
     { key: "drinkSettings", label: "Drinks", file: "drinks", lists: [{ field: "adj", label: "Adjectives" }, { field: "nouns", label: "Nouns" }] },
     { key: "lootSettings", label: "Loot", file: "loot", lists: [{ field: "adj", label: "Adjectives" }, { field: "items", label: "Items", weighted: true }] },
-    {
-        key: "groupSettings", label: "Groups", file: "groups", lists: [
-            { field: "adj", label: "Adjectives" }, { field: "nouns", label: "Nouns" }, { field: "nounsP", label: "Plural nouns" },
-            { field: "groupTypes", label: "Types" }, { field: "singleDescriptors", label: "Descriptors" },
-        ],
-    },
     {
         key: "dungeonSettings", label: "Dungeons", file: "dungeons", lists: [
             { field: "adjectives", label: "Adjectives" }, { field: "nouns", label: "Nouns" }, { field: "locations", label: "Locations" },

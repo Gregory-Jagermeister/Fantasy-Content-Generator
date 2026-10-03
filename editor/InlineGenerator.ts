@@ -1,7 +1,7 @@
 import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, Notice } from "obsidian";
 import type FantasyPlugin from "main";
 import { rankKeys } from "generators/custom";
-import { RETIRED_IN, retiredMessage } from "generators/registry";
+import { RETIRED, retiredMessage } from "generators/registry";
 
 /** Type the trigger (default "@") then a generator name, e.g. "@ElfFemale", and pick it to insert a result. */
 export class InlineGeneratorSuggester extends EditorSuggest<string> {
@@ -34,7 +34,7 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
         el.createDiv({ text: value });
         const custom = this.plugin.customs.active.get(value);
         if (custom) el.createDiv({ text: custom.name, cls: "fcg-suggestion-note" });
-        else if (this.plugin.isRetired(value)) el.createDiv({ text: `Retired in ${RETIRED_IN}`, cls: "fcg-suggestion-note" });
+        else if (this.plugin.isRetired(value)) el.createDiv({ text: `Retired in ${RETIRED[value]}`, cls: "fcg-suggestion-note" });
     }
 
     selectSuggestion(value: string): void {
