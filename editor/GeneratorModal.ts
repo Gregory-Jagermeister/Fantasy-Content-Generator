@@ -90,7 +90,14 @@ export class GeneratorModal extends Modal {
             })
             .addButton((b) => b.setButtonText("Generate").setCta().onClick(() => {
                 try {
-                    for (let i = 0; i < this.amount; i++) this.rows.push({ result: one(), selected: true });
+                    const firsts = new Set<string>();
+                    for (let i = 0; i < this.amount; i++) {
+                        // Variety: try a few times for a result that starts with a letter not used yet in this batch.
+                        let result = one();
+                        for (let tries = 0; tries < 5 && firsts.has(result.title.charAt(0).toLowerCase()); tries++) result = one();
+                        firsts.add(result.title.charAt(0).toLowerCase());
+                        this.rows.push({ result, selected: true });
+                    }
                 } catch (e) {
                     new Notice(`Couldn't generate: ${e instanceof Error ? e.message : String(e)}`);
                 }

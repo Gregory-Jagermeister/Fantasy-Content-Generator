@@ -12,6 +12,7 @@
      {$x = ...} {$x += 2}    remember a number or a result (prints nothing)
      {$x}                    print a remembered value
      {again}                 inside a row: roll the same list again, that row excluded
+   "## Name (learn)" lists hold sample names; picking from one makes a new name in their style.
    \{ and \} are literal braces. */
 import { pickWeighted, randomInt } from "utils/random";
 
@@ -164,6 +165,90 @@ export function joinNatural(items: string[]): string {
     return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
+/* ---------------- learning from samples ---------------- */
+
+const START = "\u0002";
+const END = "\u0003";
+const ORDER = 3;
+const LEARN_TRIES = 200;
+
+/** Which letter follows each run of up to 3 letters in the samples, and how often. */
+export interface NameModel {
+    /** For each order 1..3: context -> next letter -> count */
+    orders: Map<string, Map<string, number>>[];
+    samples: Set<string>;
+    minLen: number;
+    maxLen: number;
+    /** Most samples start with a capital letter */
+    capital: boolean;
+}
+
+export function buildModel(samples: string[]): NameModel {
+    const clean = samples.map((s) => s.trim()).filter(Boolean);
+    const orders: Map<string, Map<string, number>>[] = [];
+    for (let k = 0; k <= ORDER; k++) orders.push(new Map());
+    for (const sample of clean) {
+        const letters = [...START.repeat(ORDER), ...Array.from(sample.toLowerCase()), END];
+        for (let i = ORDER; i < letters.length; i++) {
+            for (let k = 1; k <= ORDER; k++) {
+                const ctx = letters.slice(i - k, i).join("");
+                const table = orders[k].get(ctx) ?? new Map<string, number>();
+                table.set(letters[i], (table.get(letters[i]) ?? 0) + 1);
+                orders[k].set(ctx, table);
+            }
+        }
+    }
+    const lengths = clean.map((s) => Array.from(s).length);
+    const capitals = clean.filter((s) => s.charAt(0) !== s.charAt(0).toLowerCase()).length;
+    return {
+        orders,
+        samples: new Set(clean.map((s) => s.toLowerCase())),
+        minLen: lengths.length ? Math.min(...lengths) : 1,
+        maxLen: lengths.length ? Math.max(...lengths) : 1,
+        capital: capitals * 2 >= clean.length,
+    };
+}
+
+/**
+ * One letter after `history`, using the longest context the samples have seen, falling back to shorter ones.
+ * Few samples use 2 letters of context (3 would mostly copy them); 50 or more use 3.
+ */
+function nextLetter(model: NameModel, history: string[]): string | undefined {
+    const top = model.samples.size >= 50 ? ORDER : 2;
+    for (let k = top; k >= 1; k--) {
+        const table = model.orders[k].get(history.slice(-k).join(""));
+        if (table?.size) return pickWeighted([...table].map(([item, weight]) => ({ item, weight })));
+    }
+    return undefined;
+}
+
+/**
+ * A new name in the style of the samples: never one of the samples, length inside the limits
+ * (default: shortest to longest sample). `accept` can reject a name (used for first-letter variety).
+ * Returns undefined after 200 tries.
+ */
+export function learnName(model: NameModel, limits: { min?: number; max?: number } = {}, accept?: (name: string) => boolean): string | undefined {
+    const min = limits.min ?? model.minLen;
+    const max = limits.max ?? model.maxLen;
+    for (let tries = 0; tries < LEARN_TRIES; tries++) {
+        const history = START.repeat(ORDER).split("");
+        const out: string[] = [];
+        while (out.length <= max) {
+            const c = nextLetter(model, history);
+            if (c === undefined || c === END) break;
+            out.push(c);
+            history.push(c);
+        }
+        const word = out.join("");
+        const len = out.length;
+        if (len < min || len > max || model.samples.has(word)) continue;
+        const name = model.capital ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+        if (accept && !accept(name) && tries < LEARN_TRIES / 2) continue;
+        return name;
+    }
+    return undefined;
+}
+
 /* ---------------- evaluation ---------------- */
 
 interface Ctx {
@@ -176,9 +261,19 @@ interface Ctx {
 
 type Value = number | string;
 
+const MODELS = new WeakMap<ListRow[], NameModel>();
+
+function modelFor(rows: ListRow[]): NameModel {
+    let model = MODELS.get(rows);
+    if (!model) { model = buildModel(rows.map((r) => r.item)); MODELS.set(rows, model); }
+    return model;
+}
+
 export class Evaluator {
     private readonly vars = new Map<string, Value>();
     private steps = 0;
+    /** First letters already used by the repeat in progress (for variety) */
+    private firstLetters: Set<string> | null = null;
 
     constructor(private readonly src: EngineSource, private readonly host: EngineHost = {}, private readonly depth = 0) {}
 
@@ -300,14 +395,21 @@ export class Evaluator {
         if (n > MAX_REPEAT) this.fail(`a repeat can make at most ${MAX_REPEAT} items (asked for ${n})`);
         const items: string[] = [];
         const seen = new Set<string>();
-        for (let i = 0; i < n; i++) {
-            let text = "";
-            for (let tries = 0; tries < 20; tries++) {
-                text = this.expr(itemExpr, ctx, { text: itemExpr, isExpr: true });
-                if (!seen.has(text)) break;
+        const outer = this.firstLetters;
+        this.firstLetters = new Set();
+        try {
+            for (let i = 0; i < n; i++) {
+                let text = "";
+                for (let tries = 0; tries < 20; tries++) {
+                    text = this.expr(itemExpr, ctx, { text: itemExpr, isExpr: true });
+                    if (!seen.has(text)) break;
+                }
+                seen.add(text);
+                items.push(text);
+                this.firstLetters.add(text.charAt(0).toLowerCase());
             }
-            seen.add(text);
-            items.push(text);
+        } finally {
+            this.firstLetters = outer;
         }
         if (piece.alone) return items.map((t) => `- ${t}`).join(`\n${piece.indent ?? ""}`);
         return joinNatural(items);
@@ -376,12 +478,20 @@ export class Evaluator {
             row = this.roll(id, rows, info, opt);
         } else {
             if (opt.die !== undefined || opt.mod) this.fail(`"## ${this.listName(id)}" isn't a ranged list, so it can't be rolled with a modifier or another die. Add a die to its heading, like "## ${this.listName(id)} (d20)"`);
-            if (info.kind === "learn") this.fail(`"## ${this.listName(id)}" learns from samples, which arrives in a later build of 1.4.0`);
+            if (info.kind === "learn") return this.learn(id, rows, info);
             const pool = rows.filter((r) => r !== opt.exclude);
             if (!pool.length) this.fail(`{again} in "## ${this.listName(id)}" has no other row to roll`);
             row = pickWeighted(pool.map((r) => ({ item: r, weight: r.weight })));
         }
         return this.pattern(row.item, { list: id, row, again: ctx.list === id ? ctx.again : 0 }).trim();
+    }
+
+    /** A new name from a "(learn)" list. */
+    private learn(id: string, rows: ListRow[], info: ListInfo): string {
+        const used = this.firstLetters;
+        const name = learnName(modelFor(rows), { min: info.min, max: info.max }, used ? (n) => !used.has(n.charAt(0).toLowerCase()) : undefined);
+        if (name === undefined) this.fail(`couldn't make a new name from "## ${this.listName(id)}"; add more samples or widen its length limits`);
+        return name;
     }
 
     private pickUnion(ids: string[], ctx: Ctx): string {

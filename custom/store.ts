@@ -1,6 +1,6 @@
 import { normalizePath, TAbstractFile, TFile, TFolder } from "obsidian";
 import type FantasyPlugin from "main";
-import { CustomGenerator, EXAMPLE_NOTE, parseGeneratorNote, resolveCustom, starterNote } from "generators/custom";
+import { CustomGenerator, EXAMPLE_NAMING_KIT, EXAMPLE_NOTE, parseGeneratorNote, resolveCustom, starterNote } from "generators/custom";
 
 /** Keeps the custom generators from the generator folder up to date. */
 export class CustomGeneratorStore {
@@ -81,6 +81,7 @@ export class CustomGeneratorStore {
         if (!(vault.getAbstractFileByPath(folder) instanceof TFolder)) {
             await vault.createFolder(folder);
             await vault.create(`${folder}/Example generator.md`, EXAMPLE_NOTE);
+            await vault.create(`${folder}/Example naming kit.md`, EXAMPLE_NAMING_KIT);
         }
         let n = 1;
         let path = `${folder}/New generator.md`;

@@ -150,6 +150,10 @@ export function parseGeneratorNote(path: string, fm: Record<string, unknown> | u
         const listName = names.get(id) ?? id;
         const kind = info.get(id);
         if (kind?.kind === "ranged" && kind.die) problems.push(...rangedProblems(listName, kind.die, rows));
+        if (kind?.kind === "learn") {
+            if (rows.length < 10) problems.push(`"## ${listName}" learns from samples and needs at least 10 (it has ${rows.length})`);
+            continue;
+        }
         for (const r of rows) problems.push(...checkText(r.key !== undefined ? r.value ?? "" : r.item, `a row in "## ${listName}"`, src));
     }
     const capitalize = fm?.["fcg-capitalize"] === true || fm?.["fcg-capitalize"] === "true";
@@ -214,6 +218,51 @@ Type **@Example** in any note (or pick it in the generator window under Custom).
 ## Family
 - Family A
 - Family B
+`;
+
+/** Example naming kit added the first time the generator folder is created (letters only; your samples go in the code block's place). */
+export const EXAMPLE_NAMING_KIT = `---
+fcg-generator: Example naming kit
+fcg-key: ExampleNames
+fcg-capitalize: true
+patterns:
+  - "{C}{V}{C}"
+  - "{C}{V}{C}{V}"
+  - "{V}{C}{V}{C}"
+---
+# Two ways to make names
+
+**1. Sound templates** (this note): lists of sounds and patterns that join them. \`fcg-capitalize: true\` gives the result a capital letter. Change the letters to change the feel: hard sounds (k, t, g) feel rough, soft ones (l, m, w) feel gentle.
+
+**2. Learn from samples**: a list whose heading ends in \`(learn)\` holds at least 10 names you like. Picking from it makes a **new** name in the same style, never a copy of a sample. \`(learn 4-9)\` limits the length; without it, names are as long as your shortest to longest sample. To try it, copy this into a new note, swap in your own names, and remove the code fence:
+
+\`\`\`
+---
+fcg-generator: My names
+pattern: "{Names}"
+---
+## Names (learn)
+- (your first sample name)
+- (and at least nine more)
+\`\`\`
+
+Tip: a language tool such as Vulgarlang can make a word list to pick samples from.
+
+## C
+- k
+- t
+- r
+- l
+- m
+- n
+- s
+
+## V
+- a
+- e
+- i
+- o
+- u
 `;
 
 /**

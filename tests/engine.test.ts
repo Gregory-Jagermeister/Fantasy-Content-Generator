@@ -159,3 +159,57 @@ test("runaway text is stopped", () => {
     const g = gen("## A\n- {100 x B}\n## B\n- {100 x C}\n## C\n- c", { pattern: "{100 x A}" });
     assert.throws(() => runCustom(g), /too much text/);
 });
+
+/* ---------------- naming kit (step 2) ---------------- */
+import { buildModel, learnName } from "generators/engine";
+import { EXAMPLE_NAMING_KIT } from "generators/custom";
+
+// Test fixture only: made-up sample words.
+const SAMPLES = ["Kalam", "Kelan", "Kolim", "Malak", "Melin", "Talin", "Tomal", "Lanik", "Nalem", "Kalin", "Molan", "Telam"];
+const learnBody = `## Names (learn)\n${SAMPLES.map((s) => `- ${s}`).join("\n")}`;
+
+test("learn: new names only, never a sample, inside the samples' length range, capitalised like the samples", () => {
+    const g = gen(learnBody, { pattern: "{Names}" });
+    const lower = new Set(SAMPLES.map((s) => s.toLowerCase()));
+    const out = many(g, 300);
+    for (const n of out) {
+        assert.ok(!lower.has(n.toLowerCase()), `copied a sample: ${n}`);
+        assert.ok(n.length >= 5 && n.length <= 5, n);
+        assert.match(n, /^[A-Z][a-z]+$/, n);
+    }
+    assert.ok(new Set(out).size > 20, `too little variety: ${new Set(out).size}`);
+});
+
+test("learn: length limits from the heading; too few samples is a problem; impossible limits fail clearly", () => {
+    const g = gen(learnBody.replace("(learn)", "(learn 4-7)"), { pattern: "{Names}" });
+    for (const n of many(g, 200)) assert.ok(n.length >= 4 && n.length <= 7, n);
+    const few = gen("## N (learn)\n- Ana\n- Bel", { pattern: "{N}" }, true);
+    assert.match(few.problems.join(), /needs at least 10 \(it has 2\)/);
+    const model = buildModel(["Aa", "Ab", "Ba", "Bb", "Ca", "Cb", "Da", "Db", "Ea", "Eb"]);
+    assert.equal(learnName(model, { min: 9, max: 12 }), undefined);
+    const stuck = gen(learnBody.replace("(learn)", "(learn 20-30)"), { pattern: "{Names}" });
+    assert.throws(() => runCustom(stuck), /couldn't make a new name/);
+});
+
+test("learn: a repeat varies first letters while it can", () => {
+    const g = gen(learnBody, { pattern: "Crew: {3 x Names}" });
+    let varied = 0;
+    for (const r of many(g, 100)) {
+        const firsts = r.replace("Crew: ", "").split(/, | and /).map((n) => n.charAt(0));
+        if (new Set(firsts).size === 3) varied++;
+    }
+    assert.ok(varied > 80, `only ${varied}/100 batches had 3 different first letters`);
+});
+
+test("learn: unicode letters (long vowels) survive", () => {
+    const uni = ["Kelzūg", "Nūpi", "Mūdar", "Fūshur", "Welū", "Mumū", "Gelzūg", "Sūdam", "Ilmū", "Halūm", "Nūbi", "Tūdak"];
+    const g = gen(`## N (learn)\n${uni.map((s) => `- ${s}`).join("\n")}`, { pattern: "{N}" });
+    assert.ok(many(g, 200).some((n) => n.includes("ū")));
+});
+
+test("example naming kit is a valid generator and makes capitalised names", () => {
+    const g = parseGeneratorNote("G/Example naming kit.md", { "fcg-generator": "Example naming kit", "fcg-key": "ExampleNames", "fcg-capitalize": true, patterns: ["{C}{V}{C}", "{C}{V}{C}{V}", "{V}{C}{V}{C}"] }, EXAMPLE_NAMING_KIT);
+    assert.ok(g && !g.problems.length, g?.problems.join());
+    assert.equal(g.lists.size, 2, "the code block example is not a list");
+    for (const n of many(g, 50)) assert.match(n, /^[A-Z][a-z]{2,3}$/, n);
+});
