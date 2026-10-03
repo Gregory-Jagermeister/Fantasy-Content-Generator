@@ -1,7 +1,6 @@
 import { App, Modal, Notice, Setting } from "obsidian";
 import type FantasyPlugin from "main";
 import { GENERATORS, Gender, Generated, RACES, raceName } from "generators/registry";
-import { runCustom } from "generators/custom";
 
 /** Most results generated in one go. */
 const MAX_AMOUNT = 50;
@@ -63,7 +62,7 @@ export class GeneratorModal extends Modal {
         const one: (() => Generated) | undefined = race
             ? () => plain(raceName(race, this.gender, this.withFamily))
             : gen ? () => gen.run(settings)
-            : custom ? () => plain(runCustom(custom)) : undefined;
+            : custom ? () => plain(this.plugin.generate(custom.key)) : undefined;
         if (!one) return;
 
         if (race) {

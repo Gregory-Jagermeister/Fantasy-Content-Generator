@@ -59,6 +59,13 @@ export default class FantasyPlugin extends Plugin {
 		return [...this.builtInKeys(), ...this.customs.active.keys()];
 	}
 
+	/** The key as written in a note ({@drinks}), matched to a real key ignoring case. */
+	matchKey(key: string): string {
+		if (this.builtIns[key] || this.customs.active.has(key)) return key;
+		const lower = key.toLowerCase();
+		return this.inlineKeys().find((k) => k.toLowerCase() === lower) ?? key;
+	}
+
 	/** Keys removed in 1.3.1 that no custom generator has taken over. Shown in the inline list, marked retired. */
 	retiredKeys(): string[] {
 		return RETIRED_KEYS.filter((k) => !this.customs.active.has(k));
@@ -69,12 +76,15 @@ export default class FantasyPlugin extends Plugin {
 		return RETIRED_KEYS.includes(key) && !this.customs.active.has(key);
 	}
 
-	/** One result for an inline key. Throws with a readable message. */
-	generate(key: string): string {
+	/**
+	 * One result for an inline key. Throws with a readable message.
+	 * @param depth how deeply generators are calling each other ({@Key} in a note); 0 from outside
+	 */
+	generate(key: string, depth = 0): string {
 		const builtIn = this.builtIns[key];
 		if (builtIn) return builtIn(this.settings);
 		const custom = this.customs.active.get(key);
-		if (custom) return runCustom(custom);
+		if (custom) return runCustom(custom, { call: (k, d) => this.generate(this.matchKey(k), d) }, depth);
 		if (RETIRED_KEYS.includes(key)) throw new Error(retiredMessage(key, this.settings.inlineCallout || "@"));
 		throw new Error(`There is no generator called "${key}".`);
 	}

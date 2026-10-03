@@ -4,14 +4,13 @@
      fcg-key:   optional inline key (default: the name, each word capitalised, no spaces)
      pattern:   one pattern, always used
      patterns:  several patterns, one picked at random each time
+     fcg-capitalize: true capitalises the first letter of each result
    Lists are `## Heading` followed by `- item` lines; `- item | 3` gives a weight of 3.
-   In a pattern, {List} picks from that list, {A|B} from either list, other text stays as written. */
-import { pickWeighted } from "utils/random";
+   `## Size (d20)` makes a ranged list (`- 1-2: text`); `## Elf (learn)` a sample list.
+   Patterns (in the properties and inside rows) are evaluated by the note engine (generators/engine.ts). */
+import { Evaluator, EngineHost, ListInfo, ListRow, WeightedEntry, checkText, parseHeading, parseKeyedRow, parseRangedRow, rangedProblems } from "generators/engine";
 
-export interface WeightedEntry {
-    item: string;
-    weight: number;
-}
+export type { WeightedEntry, ListRow, ListInfo } from "generators/engine";
 
 export interface CustomGenerator {
     /** Name from `fcg-generator` */
@@ -21,10 +20,14 @@ export interface CustomGenerator {
     /** Path of the note it came from */
     path: string;
     /** Lists by lower-case heading */
-    lists: Map<string, WeightedEntry[]>;
-    /** Heading as written, by lower-case heading (for messages) */
+    lists: Map<string, ListRow[]>;
+    /** Heading as written (without its "(d20)" or "(learn)"), by lower-case heading */
     listNames: Map<string, string>;
+    /** Kind of each list: plain, ranged or learn */
+    listInfo: Map<string, ListInfo>;
     patterns: string[];
+    /** Capitalise the first letter of each result (`fcg-capitalize: true`) */
+    capitalize: boolean;
     /** Problems found while reading; the generator may still work */
     problems: string[];
 }
@@ -62,31 +65,47 @@ export function parseEntry(raw: string): WeightedEntry | null {
     return item ? { item, weight } : null;
 }
 
-/** Lists from the note body: `## Heading` then `- item` / `* item` / `+ item` lines. Other lines are ignored. */
-export function parseLists(body: string): { lists: Map<string, WeightedEntry[]>; names: Map<string, string> } {
-    const lists = new Map<string, WeightedEntry[]>();
+/**
+ * Lists from the note body: `## Heading` then `- item` / `* item` / `+ item` lines. Other lines are ignored.
+ * A heading ending in "(d20)" makes a ranged list; "(learn)" or "(learn 4-9)" a sample list.
+ */
+export function parseLists(body: string): { lists: Map<string, ListRow[]>; names: Map<string, string>; info: Map<string, ListInfo>; problems: string[] } {
+    const lists = new Map<string, ListRow[]>();
     const names = new Map<string, string>();
-    let current: WeightedEntry[] | null = null;
+    const info = new Map<string, ListInfo>();
+    const problems: string[] = [];
+    let current: ListRow[] | null = null;
+    let currentInfo: ListInfo = { kind: "plain" };
+    let currentName = "";
     let inFence = false;
     for (const line of body.split(/\r?\n/)) {
         if (/^\s*(```|~~~)/.test(line)) { inFence = !inFence; continue; }
         if (inFence) continue;
         const heading = /^##\s+(.+?)\s*#*\s*$/.exec(line);
         if (heading) {
-            const name = heading[1].trim();
+            const { name, info: listInfo } = parseHeading(heading[1].trim());
             const id = name.toLowerCase();
-            if (!lists.has(id)) { lists.set(id, []); names.set(id, name); }
+            if (!lists.has(id)) { lists.set(id, []); names.set(id, name); info.set(id, listInfo); }
             current = lists.get(id) ?? null;
+            currentInfo = info.get(id) ?? { kind: "plain" };
+            currentName = names.get(id) ?? name;
             continue;
         }
         if (/^#\s/.test(line)) { current = null; continue; }
         const bullet = /^\s*[-*+]\s+(?:\[[ xX]\]\s+)?(.*)$/.exec(line);
-        if (bullet && current) {
-            const entry = parseEntry(bullet[1]);
-            if (entry) current.push(entry);
+        if (!bullet || !current) continue;
+        const entry = parseEntry(bullet[1]);
+        if (!entry) continue;
+        if (currentInfo.kind === "ranged") {
+            const r = parseRangedRow(entry.item);
+            if (!r) { problems.push(`the row "${entry.item}" in "## ${currentName}" needs a number or range first, like "- 1-2: text"`); continue; }
+            current.push({ item: r.text, weight: 1, lo: r.lo, hi: r.hi });
+        } else {
+            const keyed = currentInfo.kind === "plain" ? parseKeyedRow(entry.item) : null;
+            current.push(keyed ? { ...entry, key: keyed.key, value: keyed.value } : entry);
         }
     }
-    return { lists, names };
+    return { lists, names, info, problems };
 }
 
 function asStringList(value: unknown): string[] {
@@ -118,31 +137,35 @@ export function parseGeneratorNote(path: string, fm: Record<string, unknown> | u
     }
     if (!key) problems.push("this generator has no usable key (add fcg-key)");
 
-    const { lists, names } = parseLists(stripFrontmatter(body));
+    const parsed = parseLists(stripFrontmatter(body));
+    const { lists, names, info } = parsed;
+    problems.push(...parsed.problems);
     let patterns = [...asStringList(fm?.patterns), ...asStringList(fm?.pattern)].map((p) => p.trim()).filter(Boolean);
     if (!lists.size) problems.push("no lists found (a list is a ## heading followed by - items)");
     for (const [id, entries] of lists) if (!entries.length) problems.push(`the list "${names.get(id)}" is empty`);
     if (!patterns.length && lists.size) patterns = [`{${[...names.values()][0]}}`];
-    for (const p of patterns) {
-        for (const m of p.matchAll(/\{([^{}]+)\}/g)) {
-            for (const part of m[1].split("|").map((x) => x.trim()).filter(Boolean)) {
-                if (!lists.has(part.toLowerCase())) problems.push(`the pattern "${p}" uses {${part}}, but there is no list "## ${part}"`);
-            }
-        }
+    const src = { name, lists, listNames: names, listInfo: info };
+    for (const p of patterns) problems.push(...checkText(p, `the pattern "${p}"`, src));
+    for (const [id, rows] of lists) {
+        const listName = names.get(id) ?? id;
+        const kind = info.get(id);
+        if (kind?.kind === "ranged" && kind.die) problems.push(...rangedProblems(listName, kind.die, rows));
+        for (const r of rows) problems.push(...checkText(r.key !== undefined ? r.value ?? "" : r.item, `a row in "## ${listName}"`, src));
     }
-    return { name, key, path, lists, listNames: names, patterns, problems };
+    const capitalize = fm?.["fcg-capitalize"] === true || fm?.["fcg-capitalize"] === "true";
+    return { name, key, path, lists, listNames: names, listInfo: info, patterns, capitalize, problems: [...new Set(problems)] };
 }
 
-/** One result from a custom generator. Throws with a readable message if it can't. */
-export function runCustom(gen: CustomGenerator): string {
+/**
+ * One result from a custom generator. Throws with a readable message if it can't.
+ * @param host  lets {@Key} run other generators
+ * @param depth how deeply generator calls are nested already
+ */
+export function runCustom(gen: CustomGenerator, host: EngineHost = {}, depth = 0): string {
     if (!gen.patterns.length) throw new Error(`${gen.name} has no lists to pick from.`);
     const pattern = gen.patterns[Math.floor(Math.random() * gen.patterns.length)];
-    return pattern.replace(/\{([^{}]+)\}/g, (_whole, inner: string) => {
-        const pool: WeightedEntry[] = [];
-        for (const part of inner.split("|")) pool.push(...(gen.lists.get(part.trim().toLowerCase()) ?? []));
-        if (!pool.length) throw new Error(`${gen.name}: nothing to pick for {${inner}}. Check that the list exists and has items.`);
-        return pickWeighted(pool);
-    }).trim();
+    const text = new Evaluator({ name: gen.name, lists: gen.lists, listNames: gen.listNames, listInfo: gen.listInfo }, host, depth).run(pattern);
+    return gen.capitalize ? text.charAt(0).toUpperCase() + text.slice(1) : text;
 }
 
 /** Starter note for the New generator command (structure only; the words are placeholders). */
