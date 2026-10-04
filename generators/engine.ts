@@ -12,7 +12,10 @@
      {$x = ...} {$x += 2}    remember a number or a result (prints nothing)
      {$x}                    print a remembered value
      {again}                 inside a row: roll the same list again, that row excluded
+     {List.meaning}          a meaning list's English side ("blood"), not recorded as a meaning
    "## Name (learn)" lists hold sample names; picking from one makes a new name in their style.
+   "## Name (meanings)" lists hold "- word = meaning" rows; picking one prints the word and records
+   the meaning, so a name can show what it means: Nöndtrind (stone-helmet).
    \{ and \} are literal braces. */
 import { pickWeighted, randomInt } from "utils/random";
 
@@ -29,10 +32,12 @@ export interface ListRow extends WeightedEntry {
     /** Keyed rows ("Small: {1d8+4}"): the key and the text after the colon */
     key?: string;
     value?: string;
+    /** Meaning lists: what the word means ("nönd = stone" -> "stone") */
+    meaning?: string;
 }
 
 export interface ListInfo {
-    kind: "plain" | "ranged" | "learn";
+    kind: "plain" | "ranged" | "learn" | "meanings";
     /** Ranged lists: the die in the heading */
     die?: number;
     /** Learn lists: name length limits, if given */
@@ -63,8 +68,10 @@ const TERM_RE = new RegExp(String.raw`^(\d+d\d+|d\d+|\d+-\d+|\d+|\$${NAME})`, "u
 
 /* ---------------- headings and rows ---------------- */
 
-/** "Size (d20)" -> {name: "Size", info: ranged d20}; "Elf (learn 4-9)" -> learn list; else plain. */
+/** "Size (d20)" -> {name: "Size", info: ranged d20}; "Elf (learn 4-9)" -> learn list; "Land (meanings)" -> meaning list; else plain. */
 export function parseHeading(text: string): { name: string; info: ListInfo } {
+    const meanings = /^(.*?)\s*\(\s*meanings\s*\)\s*$/i.exec(text);
+    if (meanings && meanings[1].trim()) return { name: meanings[1].trim(), info: { kind: "meanings" } };
     const m = /^(.*?)\s*\(\s*(?:d(\d+)|learn(?:\s+(\d+)\s*-\s*(\d+))?)\s*\)\s*$/i.exec(text);
     if (!m || !m[1].trim()) return { name: text.trim(), info: { kind: "plain" } };
     if (m[2]) return { name: m[1].trim(), info: { kind: "ranged", die: Number(m[2]) } };
@@ -86,6 +93,28 @@ export function parseRangedRow(raw: string): { lo: number; hi: number; text: str
 export function parseKeyedRow(raw: string): { key: string; value: string } | null {
     const m = /^([^{}:|]+?)\s*:\s+(.+)$/s.exec(raw.trim());
     return m ? { key: m[1].trim(), value: m[2].trim() } : null;
+}
+
+/** "nönd = stone" -> {word: "nönd", meaning: "stone"}; null when there's no "=" with text on both sides. */
+export function parseMeaningRow(raw: string): { word: string; meaning: string } | null {
+    const i = raw.indexOf("=");
+    if (i < 0) return null;
+    const word = raw.slice(0, i).trim();
+    const meaning = raw.slice(i + 1).trim();
+    return word && meaning ? { word, meaning } : null;
+}
+
+/**
+ * The translation shown after a name: meanings in one word join with "-", words with ", ".
+ * `log` holds meanings and null for each break between words.
+ */
+export function translation(log: (string | null)[]): string {
+    const words: string[][] = [[]];
+    for (const m of log) {
+        if (m === null) { if (words[words.length - 1].length) words.push([]); }
+        else words[words.length - 1].push(m);
+    }
+    return words.filter((w) => w.length).map((w) => w.join("-")).join(", ");
 }
 
 /** Problems with a ranged list's rows: gaps, overlaps, rows outside the die. */
@@ -287,12 +316,24 @@ export class Evaluator {
     private steps = 0;
     /** First letters already used by the repeat in progress (for variety) */
     private firstLetters: Set<string> | null = null;
+    /** Meanings picked so far, with null for each break between words */
+    private readonly meaningLog: (string | null)[] = [];
 
     constructor(private readonly src: EngineSource, private readonly host: EngineHost = {}, private readonly depth = 0) {}
 
     /** Evaluate a whole pattern. */
     run(pattern: string): string {
         return tidy(this.pattern(pattern, { again: 0 }));
+    }
+
+    /** What the last run's name means ("stone-helmet"), or "" when it used no meaning list. */
+    translation(): string {
+        return translation(this.meaningLog);
+    }
+
+    /** Text with a space or line break in it ends the word being built. */
+    private noteBreak(text: string): void {
+        if (/\s/.test(text)) this.meaningLog.push(null);
     }
 
     private fail(message: string): never {
@@ -302,9 +343,13 @@ export class Evaluator {
     private pattern(text: string, ctx: Ctx): string {
         let out = "";
         for (const p of scanPattern(text)) {
-            if (!p.isExpr) { out += p.text; continue; }
+            if (!p.isExpr) { this.noteBreak(p.text); out += p.text; continue; }
             if (++this.steps > MAX_STEPS) this.fail("this makes too much text at once (a list may be calling itself through {again} or repeats)");
-            out += this.expr(p.text.trim(), ctx, p);
+            const before = this.meaningLog.length;
+            const text = this.expr(p.text.trim(), ctx, p);
+            // Text that recorded no meaning (a first name, a call, a number) still splits words if it has a space.
+            if (this.meaningLog.length === before) this.noteBreak(text);
+            out += text;
         }
         return out;
     }
@@ -412,8 +457,11 @@ export class Evaluator {
         this.firstLetters = new Set();
         try {
             for (let i = 0; i < n; i++) {
+                if (i) this.meaningLog.push(null);
+                const mark = this.meaningLog.length;
                 let text = "";
                 for (let tries = 0; tries < 20; tries++) {
+                    this.meaningLog.length = mark; // a re-roll replaces the meanings of the one it discards
                     text = this.expr(itemExpr, ctx, { text: itemExpr, isExpr: true });
                     if (!seen.has(text)) break;
                 }
@@ -434,6 +482,12 @@ export class Evaluator {
 
         const whole = this.findList(e);
         if (whole !== undefined) return this.pick(whole, ctx, {});
+
+        const side = /^(.+?)\.meaning$/i.exec(e);
+        if (side) {
+            const id = this.findList(side[1]);
+            if (id !== undefined) return this.meaningOf(id);
+        }
 
         const look = /^(.+?)\s*:\s*(.+)$/s.exec(e);
         if (look) {
@@ -496,7 +550,21 @@ export class Evaluator {
             if (!pool.length) this.fail(`{again} in "## ${this.listName(id)}" has no other row to roll`);
             row = pickWeighted(pool.map((r) => ({ item: r, weight: r.weight })));
         }
-        return this.pattern(row.item, { list: id, row, again: ctx.list === id ? ctx.again : 0 }).trim();
+        return this.evalRow(id, row, ctx.list === id ? ctx.again : 0);
+    }
+
+    /** Evaluate a picked row; a meaning list's row records its meaning first. */
+    private evalRow(id: string, row: ListRow, again: number): string {
+        if (row.meaning !== undefined) this.meaningLog.push(row.meaning);
+        return this.pattern(row.item, { list: id, row, again }).trim();
+    }
+
+    /** {List.meaning}: the English side of a random row of a meaning list. */
+    private meaningOf(id: string): string {
+        if (this.src.listInfo.get(id)?.kind !== "meanings") this.fail(`{${this.listName(id)}.meaning} needs a meaning list, like "## ${this.listName(id)} (meanings)"`);
+        const rows = this.src.lists.get(id) ?? [];
+        if (!rows.length) this.fail(`nothing to pick for {${this.listName(id)}.meaning}. Check that the list has items.`);
+        return pickWeighted(rows.map((r) => ({ item: r, weight: r.weight }))).meaning ?? "";
     }
 
     /** A new name from a "(learn)" list. */
@@ -510,12 +578,13 @@ export class Evaluator {
     private pickUnion(ids: string[], ctx: Ctx): string {
         const pool: { item: [string, ListRow]; weight: number }[] = [];
         for (const id of ids) {
-            if ((this.src.listInfo.get(id)?.kind ?? "plain") !== "plain") this.fail(`{A|B} only mixes plain lists ("## ${this.listName(id)}" isn't one)`);
+            const kind = this.src.listInfo.get(id)?.kind ?? "plain";
+            if (kind !== "plain" && kind !== "meanings") this.fail(`{A|B} only mixes plain and meaning lists ("## ${this.listName(id)}" isn't one)`);
             for (const r of this.src.lists.get(id) ?? []) pool.push({ item: [id, r], weight: r.weight });
         }
         if (!pool.length) this.fail(`nothing to pick for {${ids.map((i) => this.listName(i)).join("|")}}. Check that the list exists and has items.`);
         const [id, row] = pickWeighted(pool);
-        return this.pattern(row.item, { list: id, row, again: 0 }).trim();
+        return this.evalRow(id, row, 0);
     }
 
     /** Roll a ranged list: its die (or another), plus a modifier, kept inside its first and last rows. */
@@ -562,12 +631,13 @@ export class Evaluator {
         let best: ListRow | undefined;
         let bestLen = -1;
         for (const r of rows) {
-            const k = (r.key ?? (info.kind === "ranged" ? r.item : "")).trim().toLowerCase();
+            const k = (r.key ?? r.meaning ?? (info.kind === "ranged" ? r.item : "")).trim().toLowerCase();
             if (!k) continue;
             const hit = wanted === k || (wanted.startsWith(k) && !/[\p{L}\p{N}]/u.test(wanted.charAt(k.length)));
             if (hit && k.length > bestLen) { best = r; bestLen = k.length; }
         }
         if (!best) this.fail(`"## ${this.listName(id)}" has no row for "${String(key)}"`);
+        if (best.meaning !== undefined) return this.evalRow(id, best, 0);
         const text = best.key !== undefined ? best.value ?? "" : best.item;
         return this.pattern(text, { list: id, row: best, again: 0 }).trim();
     }
@@ -630,6 +700,10 @@ function checkExpr(e: string, where: string, src: EngineSource): string[] {
         if (isNumeric(left) || (look && hasList(src, look[1]))) return checkExpr(rep[2].trim(), where, src);
     }
     if (hasList(src, e)) return [];
+    const side = /^(.+?)\.meaning$/i.exec(e);
+    if (side && hasList(src, side[1])) {
+        return src.listInfo.get(side[1].trim().toLowerCase())?.kind === "meanings" ? [] : [`${where} uses {${e}}, but "## ${side[1].trim()}" isn't a meaning list (add "(meanings)" to its heading)`];
+    }
     const look = /^(.+?)\s*:\s*(.+)$/s.exec(e);
     if (look && hasList(src, look[1])) return [];
     const withDie = /^(.+?)\s+with\s+d\d+/is.exec(e);

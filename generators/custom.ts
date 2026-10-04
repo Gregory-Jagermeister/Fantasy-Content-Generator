@@ -4,11 +4,12 @@
      fcg-key:   optional inline key (default: the name, each word capitalised, no spaces)
      pattern:   one pattern, always used
      patterns:  several patterns, one picked at random each time
-     fcg-capitalize: true capitalises the first letter of each result
+     fcg-capitalize: true capitalises the first letter of each result; `words` capitalises every word
    Lists are `## Heading` followed by `- item` lines; `- item | 3` gives a weight of 3.
-   `## Size (d20)` makes a ranged list (`- 1-2: text`); `## Elf (learn)` a sample list.
+   `## Size (d20)` makes a ranged list (`- 1-2: text`); `## Elf (learn)` a sample list;
+   `## Land (meanings)` a meaning list (`- nönd = stone`).
    Patterns (in the properties and inside rows) are evaluated by the note engine (generators/engine.ts). */
-import { Evaluator, EngineHost, ListInfo, ListRow, WeightedEntry, checkText, parseHeading, parseKeyedRow, parseRangedRow, rangedProblems } from "generators/engine";
+import { Evaluator, EngineHost, ListInfo, ListRow, WeightedEntry, checkText, parseHeading, parseKeyedRow, parseMeaningRow, parseRangedRow, rangedProblems } from "generators/engine";
 
 export type { WeightedEntry, ListRow, ListInfo } from "generators/engine";
 
@@ -28,6 +29,8 @@ export interface CustomGenerator {
     patterns: string[];
     /** Capitalise the first letter of each result (`fcg-capitalize: true`) */
     capitalize: boolean;
+    /** Capitalise every word of each result (`fcg-capitalize: words`) */
+    capitalizeWords?: boolean;
     /** Problems found while reading; the generator may still work */
     problems: string[];
 }
@@ -100,6 +103,10 @@ export function parseLists(body: string): { lists: Map<string, ListRow[]>; names
             const r = parseRangedRow(entry.item);
             if (!r) { problems.push(`the row "${entry.item}" in "## ${currentName}" needs a number or range first, like "- 1-2: text"`); continue; }
             current.push({ item: r.text, weight: 1, lo: r.lo, hi: r.hi });
+        } else if (currentInfo.kind === "meanings") {
+            const m = parseMeaningRow(entry.item);
+            if (!m) { problems.push(`the row "${entry.item}" in "## ${currentName}" needs a word and its meaning, like "- nönd = stone"`); continue; }
+            current.push({ item: m.word, weight: entry.weight, meaning: m.meaning });
         } else {
             const keyed = currentInfo.kind === "plain" ? parseKeyedRow(entry.item) : null;
             current.push(keyed ? { ...entry, key: keyed.key, value: keyed.value } : entry);
@@ -156,20 +163,33 @@ export function parseGeneratorNote(path: string, fm: Record<string, unknown> | u
         }
         for (const r of rows) problems.push(...checkText(r.key !== undefined ? r.value ?? "" : r.item, `a row in "## ${listName}"`, src));
     }
-    const capitalize = fm?.["fcg-capitalize"] === true || fm?.["fcg-capitalize"] === "true";
-    return { name, key, path, lists, listNames: names, listInfo: info, patterns, capitalize, problems: [...new Set(problems)] };
+    const cap: unknown = fm?.["fcg-capitalize"];
+    const capitalizeWords = typeof cap === "string" && cap.trim().toLowerCase() === "words";
+    const capitalize = capitalizeWords || cap === true || cap === "true";
+    return { name, key, path, lists, listNames: names, listInfo: info, patterns, capitalize, capitalizeWords, problems: [...new Set(problems)] };
+}
+
+/** Does this generator use a meaning list anywhere? (Then it also offers a "+ meaning" pick.) */
+export function usesMeanings(gen: CustomGenerator): boolean {
+    for (const k of gen.listInfo.values()) if (k.kind === "meanings") return true;
+    return false;
 }
 
 /**
  * One result from a custom generator. Throws with a readable message if it can't.
  * @param host  lets {@Key} run other generators
  * @param depth how deeply generator calls are nested already
+ * @param opts  meanings: add what the name means in brackets, e.g. "Durak Nöndtrind (stone-helmet)"
  */
-export function runCustom(gen: CustomGenerator, host: EngineHost = {}, depth = 0): string {
+export function runCustom(gen: CustomGenerator, host: EngineHost = {}, depth = 0, opts: { meanings?: boolean } = {}): string {
     if (!gen.patterns.length) throw new Error(`${gen.name} has no lists to pick from.`);
     const pattern = gen.patterns[Math.floor(Math.random() * gen.patterns.length)];
-    const text = new Evaluator({ name: gen.name, lists: gen.lists, listNames: gen.listNames, listInfo: gen.listInfo }, host, depth).run(pattern);
-    return gen.capitalize ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+    const ev = new Evaluator({ name: gen.name, lists: gen.lists, listNames: gen.listNames, listInfo: gen.listInfo }, host, depth);
+    let text = ev.run(pattern);
+    if (gen.capitalizeWords) text = text.replace(/(^|\s)(\p{Ll})/gu, (_m, pre: string, c: string) => pre + c.toUpperCase());
+    else if (gen.capitalize) text = text.charAt(0).toUpperCase() + text.slice(1);
+    const meaning = opts.meanings ? ev.translation() : "";
+    return meaning ? `${text} (${meaning})` : text;
 }
 
 /** Starter note for the New generator command (structure only; the words are placeholders). */
