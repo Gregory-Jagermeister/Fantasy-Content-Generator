@@ -76,7 +76,7 @@ export function stripFrontmatter(text: string): string {
     return m ? text.slice(m[0].length) : text;
 }
 
-/** The last "|" outside {braces} (a "|" inside {if …: a | b} or {A|B} isn't a weight). */
+/** The last "|" outside {braces} (a "|" inside {#if …: a | b} or {A|B} isn't a weight). */
 function lastTopBar(raw: string): number {
     let depth = 0;
     let bar = -1;
@@ -195,10 +195,6 @@ export function parseGeneratorNote(path: string, fm: Record<string, unknown> | u
     }
     if (!lists.size) problems.push("no lists found (a list is a ## heading followed by - items)");
     for (const [id, entries] of lists) if (!entries.length) problems.push(`the list "${names.get(id)}" is empty`);
-    for (const listName of names.values()) {
-        const word = /^(if|each|repeat)\s/i.exec(listName);
-        if (word) problems.push(`"## ${listName}" starts with "${word[1]}", which starts a condition or loop inside {}. Rename the list so {${listName}} works`);
-    }
     if (!patterns.length && lists.size) patterns = [`{${[...names.values()][0]}}`];
     const src = { name, lists, listNames: names, listInfo: info };
     for (const p of patterns) problems.push(...checkText(p, `the pattern "${p}"`, src));

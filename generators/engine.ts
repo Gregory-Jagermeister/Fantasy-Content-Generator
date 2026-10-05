@@ -17,9 +17,10 @@
    "## Name (meanings)" lists hold "- word = meaning" rows; picking one prints the word and records
    the meaning, so a name can show what it means: Nöndtrind (stone-helmet).
    1.6.0 tools (braces may nest):
-     {if $x > 60: A | B}     if / else in a sentence; > < >= <= = != with and, or, not; text ignores case
-     {repeat 1d4: pattern}   a pattern several times ($i counts from 1)
-     {each List: pattern}    once per row of a list, in order ($item, $meaning, $i, $first, $last)
+     "#" marks logic; a ":" means it all happens inside these braces (short form), none means a block.
+     {#if $x > 60: A | B}    if / else in a sentence; > < >= <= = != with and, or, not; text ignores case
+     {#repeat 1d4: pattern}  a pattern several times ($i counts from 1)
+     {#each List: pattern}   once per row of a list, in order ($item, $meaning, $i, $first, $last)
      {#if …} {else if …} {else} {/if}, {#each List} {else} {/each}, {#repeat N} {/repeat}
                              blocks for whole passages; a tag alone on its line takes its line with it
      {a List} {A $x}         "a" or "an" in front of the result
@@ -281,7 +282,7 @@ export function parsePattern(pattern: string): Node[] {
         }
         swallow = false;
         const tag = TAG_RE.exec(p.text.trim());
-        if (!tag) { out.push({ t: "expr", piece: p }); continue; }
+        if (!tag || (tag[1].startsWith("#") && hasTopColon(tag[2] ?? ""))) { out.push({ t: "expr", piece: p }); continue; }
         if (p.alone) {
             const last = out[out.length - 1];
             if (last?.t === "text") { last.text = last.text.replace(/[ \t]*$/, ""); if (!last.text) out.pop(); }
@@ -320,11 +321,17 @@ export function parsePattern(pattern: string): Node[] {
     }
     if (stack.length) {
         const open = stack[stack.length - 1].node.t;
-        throw new Error(`{#${open}} has no {/${open}}`);
+        const short = open === "if" ? "{#if $x > 5: big | small}" : open === "each" ? "{#each List: {$item}}" : "{#repeat 3: {Item}}";
+        throw new Error(`{#${open}} has no {/${open}}. For a one-line ${open}, add ":" like ${short}`);
     }
     if (PARSED.size > 500) PARSED.clear();
     PARSED.set(pattern, root);
     return root;
+}
+
+/** Does this have a ":" outside braces and quotes? (Then a #tag is a short form, not a block.) */
+function hasTopColon(s: string): boolean {
+    return scanTop(s, 0, true, (j) => s[j] === ":") >= 0;
 }
 
 /** "if $x > 1: a | b" -> its parts; null without a ":". The first "|" outside braces starts the else part. */
@@ -346,7 +353,9 @@ function splitHead(rest: string): [string, string | null] {
     return colon < 0 ? [rest.trim(), null] : [rest.slice(0, colon).trim(), rest.slice(colon + 1).trim()];
 }
 
-const KEYWORD_RE = /^(if|repeat|each)\s+([\s\S]+)$/i;
+const KEYWORD_RE = /^#(if|repeat|each)\s+([\s\S]+)$/i;
+/** 1.6.0 short forms need "#": "{if …}" alone is caught and explained. */
+const BARE_KEYWORD_RE = /^(if|repeat|each)\s+[\s\S]*:/i;
 const ARTICLE_RE = /^(a|an)\s+([\s\S]+)$/i;
 const COMPARE = [">=", "<=", "!=", "==", ">", "<", "="];
 
@@ -653,10 +662,10 @@ export class Evaluator {
         return out;
     }
 
-    /** {each List}: the list's id, or a clear message. */
+    /** {#each List}: the list's id, or a clear message. */
     private eachList(name: string): string {
         const id = this.findList(name);
-        if (id === undefined) this.fail(`{each ${name.trim()}} needs a list "## ${name.trim()}"`);
+        if (id === undefined) this.fail(`{#each ${name.trim()}} needs a list "## ${name.trim()}"`);
         return id;
     }
 
@@ -669,7 +678,7 @@ export class Evaluator {
         this.vars.set("meaning", row.meaning ?? "");
     }
 
-    /** A short form: {if …: A | B}, {repeat N: …} or {each List: …}. */
+    /** A short form: {#if …: A | B}, {#repeat N: …} or {#each List: …}. */
     private keyword(word: string, rest: string, ctx: Ctx, piece: Piece): string {
         const lay = (items: string[]) => {
             const kept = items.map((t) => t.trim()).filter(Boolean);
@@ -677,17 +686,18 @@ export class Evaluator {
         };
         if (word === "if") {
             const parts = splitIf(rest);
-            if (!parts) this.fail(`{if ${rest}} needs a ":" after the condition, like {if $wealth > 60: rich | poor}`);
+            if (!parts) this.fail(`{#if ${rest}} needs a ":" after the condition, like {#if $wealth > 60: rich | poor}`);
             return this.pattern(this.cond(parts.cond, ctx) ? parts.then : parts.otherwise, ctx).trim();
         }
         const [head, body] = splitHead(rest);
         if (word === "repeat") {
-            if (body === null) this.fail(`{repeat ${rest}} needs a ":" after the count, like {repeat 1d4: {Item}}`);
+            if (body === null) this.fail(`{#repeat ${rest}} needs a ":" after the count, like {#repeat 1d4: {Item}}`);
             return lay(this.loop(this.count(head, ctx), () => undefined, () => this.pattern(body, ctx)));
         }
         const id = this.eachList(head);
         const rows = this.src.lists.get(id) ?? [];
-        return lay(this.loop(rows.length, (i) => this.setItem(id, rows[i]), () => (body === null ? String(this.vars.get("item") ?? "") : this.pattern(body, ctx))));
+        if (body === null) this.fail(`{#each ${rest}} needs a ":" after the list, like {#each ${head}: {$item}}`);
+        return lay(this.loop(rows.length, (i) => this.setItem(id, rows[i]), () => this.pattern(body, ctx)));
     }
 
     /* ----- conditions ----- */
@@ -759,6 +769,7 @@ export class Evaluator {
             return `${art[0].charAt(0) === "A" ? a.charAt(0).toUpperCase() + a.slice(1) : a} ${text}`;
         }
         if (e.includes("{") && this.findList(e) === undefined && !/^[^{]*:/.test(e)) return this.pattern(e, ctx).trim();
+        if (BARE_KEYWORD_RE.test(e) && this.findList(e) === undefined && !this.lookupList(e)) this.fail(`{${e}}: logic starts with "#", like {#${e}}`);
         return this.value(e, ctx);
     }
 
@@ -890,6 +901,12 @@ export class Evaluator {
         }
 
         this.fail(`nothing to pick for {${e}}. Check that the list exists and has items.`);
+    }
+
+    /** Is this "List: key" for a list that exists? */
+    private lookupList(e: string): boolean {
+        const look = /^(.+?)\s*:\s*(.+)$/s.exec(e);
+        return !!look && this.findList(look[1]) !== undefined;
     }
 
     private findList(name: string): string | undefined {
@@ -1138,15 +1155,15 @@ function checkExpr(e: string, where: string, src: EngineSource): string[] {
         const rest = kw[2];
         if (word === "if") {
             const parts = splitIf(rest);
-            if (!parts) return [`${where}: {${e}} needs a ":" after the condition, like {if $wealth > 60: rich | poor}`];
+            if (!parts) return [`${where}: {${e}} needs a ":" after the condition, like {#if $wealth > 60: rich | poor}`];
             return [...checkCond(parts.cond, where, src), ...checkText(parts.then, where, src), ...checkText(parts.otherwise, where, src)];
         }
         const [head, body] = splitHead(rest);
         if (word === "repeat") {
-            if (body === null) return [`${where}: {${e}} needs a ":" after the count, like {repeat 1d4: {Item}}`];
+            if (body === null) return [`${where}: {${e}} needs a ":" after the count, like {#repeat 1d4: {Item}}`];
             return [...checkCount(head, where, src), ...checkText(body, where, src)];
         }
-        const problems = hasList(src, head) ? [] : [`${where} uses {each ${head}}, but there is no list "## ${head}"`];
+        const problems = hasList(src, head) ? [] : [`${where} uses {#each ${head}}, but there is no list "## ${head}"`];
         return body === null ? problems : [...problems, ...checkText(body, where, src)];
     }
     const rep = /^(.+?)\s+x\s+(.+)$/is.exec(e);
@@ -1156,6 +1173,11 @@ function checkExpr(e: string, where: string, src: EngineSource): string[] {
         if (isNumeric(left) || (look && hasList(src, look[1]))) return checkExpr(rep[2].trim(), where, src);
     }
     if (hasList(src, e)) return [];
+    const bare = BARE_KEYWORD_RE.exec(e);
+    if (bare) {
+        const look = /^(.+?)\s*:\s*(.+)$/s.exec(e);
+        if (!look || !hasList(src, look[1])) return [`${where}: {${e}} needs a "#" in front: {#${e}}`];
+    }
     const art = articleParts(e, (n) => hasList(src, n));
     if (art) return checkExpr(art[1], where, src);
     const side = /^(.+?)\.meaning$/i.exec(e);
