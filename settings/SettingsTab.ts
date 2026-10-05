@@ -182,7 +182,7 @@ export class SettingTab extends PluginSettingTab {
             const active = store.active.get(g.key) === g;
             const item = new Setting(el)
                 .setName(active ? `@${g.key}` : `@${g.key} (not in use)`)
-                .setDesc(`${g.name} · ${g.path}`);
+                .setDesc(`${g.name} · ${g.path}${active && g.twinKey ? ` · with meanings: @${g.twinKey}` : ""}`);
             if (g.problems.length) {
                 const list = item.descEl.createEl("ul", { cls: "fcg-problems" });
                 for (const p of g.problems) list.createEl("li", { text: p });

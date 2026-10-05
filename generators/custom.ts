@@ -31,6 +31,10 @@ export interface CustomGenerator {
     capitalize: boolean;
     /** Capitalise every word of each result (`fcg-capitalize: words`) */
     capitalizeWords?: boolean;
+    /** The "+ meaning" twin: results end with what they mean, e.g. "(stone-helmet)" */
+    withMeanings?: boolean;
+    /** The twin's key, when this generator has one (set by resolveCustom) */
+    twinKey?: string;
     /** Problems found while reading; the generator may still work */
     problems: string[];
 }
@@ -188,7 +192,7 @@ export function runCustom(gen: CustomGenerator, host: EngineHost = {}, depth = 0
     let text = ev.run(pattern);
     if (gen.capitalizeWords) text = text.replace(/(^|\s)(\p{Ll})/gu, (_m, pre: string, c: string) => pre + c.toUpperCase());
     else if (gen.capitalize) text = text.charAt(0).toUpperCase() + text.slice(1);
-    const meaning = opts.meanings ? ev.translation() : "";
+    const meaning = (opts.meanings ?? gen.withMeanings) ? ev.translation() : "";
     return meaning ? `${text} (${meaning})` : text;
 }
 
@@ -302,10 +306,16 @@ Tip: a language tool such as Vulgarlang can make a word list to pick samples fro
 - u
 `;
 
+/** The "+ meaning" twin of a generator that uses meaning lists: same note, results show their meaning. */
+export function meaningTwin(gen: CustomGenerator): CustomGenerator {
+    return { ...gen, key: `${gen.key}Meaning`, name: `${gen.name} + meaning`, withMeanings: true, twinKey: undefined };
+}
+
 /**
  * Decide which custom generators are active. A key already used by a built-in generator or an
  * earlier note (sorted by path) is skipped and the clash added to that note's problems.
  * Keys are compared ignoring case, because inline matching ignores case.
+ * A generator that uses meaning lists also gets its "+ meaning" twin (key + "Meaning") when that key is free.
  */
 export function resolveCustom(gens: CustomGenerator[], builtInKeys: Iterable<string>): Map<string, CustomGenerator> {
     const taken = new Map<string, string>();
@@ -321,7 +331,23 @@ export function resolveCustom(gens: CustomGenerator[], builtInKeys: Iterable<str
         taken.set(g.key.toLowerCase(), `"${g.path}"`);
         active.set(g.key, g);
     }
-    return active;
+    // Twins go straight after their generator, so lists show "Dwarvish" then "Dwarvish + meaning".
+    const withTwins = new Map<string, CustomGenerator>();
+    for (const g of active.values()) {
+        withTwins.set(g.key, g);
+        g.twinKey = undefined;
+        if (!usesMeanings(g)) continue;
+        const twin = meaningTwin(g);
+        const owner = taken.get(twin.key.toLowerCase());
+        if (owner) {
+            g.problems.push(`the "+ meaning" pick needs the key @${twin.key}, but it is already used by ${owner}`);
+            continue;
+        }
+        taken.set(twin.key.toLowerCase(), `"${g.path}" (+ meaning)`);
+        g.twinKey = twin.key;
+        withTwins.set(twin.key, twin);
+    }
+    return withTwins;
 }
 
 /**

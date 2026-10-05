@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseGeneratorNote, runCustom, usesMeanings, CustomGenerator } from "generators/custom";
+import { parseGeneratorNote, resolveCustom, runCustom, usesMeanings, CustomGenerator } from "generators/custom";
 import { parseHeading, parseMeaningRow, translation } from "generators/engine";
 
 /** A generator from a note body and properties; fails the test if the note has problems (unless allowed). */
@@ -87,4 +87,44 @@ test("fcg-capitalize: words capitalises every word; true only the first", () => 
     const first = gen("## A\n- ab cd", { "fcg-capitalize": true });
     assert.equal(runCustom(first), "Ab cd");
     assert.equal(runCustom(gen(KIT, { pattern: "{Land}", "fcg-capitalize": "words" }), {}, 0, M), "Nönd (stone)");
+});
+
+/* ---------------- Step 2: the "+ meaning" pick ---------------- */
+
+test("twin: a generator with meaning lists gets a '+ meaning' twin right after it", () => {
+    const kit = parseGeneratorNote("G/a.md", { "fcg-generator": "Dwarvish", pattern: "{First} {Land}{War}", "fcg-capitalize": "words" }, KIT);
+    const plain = parseGeneratorNote("G/b.md", { "fcg-generator": "Plain" }, "## A\n- a");
+    assert.ok(kit && plain);
+    const active = resolveCustom([kit, plain], []);
+    assert.deepEqual([...active.keys()], ["Dwarvish", "DwarvishMeaning", "Plain"]);
+    const twin = active.get("DwarvishMeaning");
+    assert.ok(twin);
+    assert.equal(twin.name, "Dwarvish + meaning");
+    assert.equal(kit.twinKey, "DwarvishMeaning");
+    assert.equal(runCustom(kit), "Durak Nöndtrind");
+    assert.equal(runCustom(twin), "Durak Nöndtrind (stone-helmet)");
+    assert.equal(plain.twinKey, undefined);
+});
+
+test("twin: a key already taken means no twin, and the note says why", () => {
+    const kit = parseGeneratorNote("G/a.md", { "fcg-generator": "Dwarvish" }, KIT);
+    const other = parseGeneratorNote("G/b.md", { "fcg-generator": "Other", "fcg-key": "DwarvishMeaning" }, "## A\n- a");
+    assert.ok(kit && other);
+    const active = resolveCustom([kit, other], []);
+    assert.equal(active.get("DwarvishMeaning"), other);
+    assert.equal(kit.twinKey, undefined);
+    assert.match(kit.problems.join(" "), /needs the key @DwarvishMeaning, but it is already used by "G\/b.md"/);
+    const builtIn = parseGeneratorNote("G/a.md", { "fcg-generator": "Dwarvish" }, KIT);
+    assert.ok(builtIn);
+    resolveCustom([builtIn], ["dwarvishmeaning"]);
+    assert.match(builtIn.problems.join(" "), /a built-in generator/);
+});
+
+test("twin: {@Key} calls work for both picks", () => {
+    const kit = parseGeneratorNote("G/a.md", { "fcg-generator": "Dwarvish", pattern: "{Land}" }, KIT);
+    const npc = parseGeneratorNote("G/b.md", { "fcg-generator": "NPC", pattern: "Name: {@DwarvishMeaning}" }, "## A\n- a");
+    assert.ok(kit && npc);
+    const active = resolveCustom([kit, npc], []);
+    const host = { call: (k: string, d: number) => runCustom(active.get(k)!, host, d) };
+    assert.equal(runCustom(npc, host), "Name: nönd (stone)");
 });
