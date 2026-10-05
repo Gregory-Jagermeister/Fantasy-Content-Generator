@@ -167,6 +167,10 @@ export class SettingTab extends PluginSettingTab {
                 void this.plugin.newGenerator();
             }));
         new Setting(el)
+            .setName("Starter sets")
+            .setDesc("Add a ready-made naming kit for a race or human culture, with names that can show what they mean. Your own notes are never overwritten.")
+            .addButton((b) => b.setButtonText("Add a starter set").onClick(() => this.plugin.openStarters()));
+        new Setting(el)
             .setName("Refresh")
             .setDesc("Generators update by themselves when their notes change. Use this if something looks out of date.")
             .addButton((b) => b.setButtonText("Refresh").onClick(() => {

@@ -8,6 +8,8 @@ import { clonePlain, mergeSettings } from "settings/settingsData";
 import { groupOfKey, inlineGenerators, RETIRED_KEYS, retiredMessage } from "generators/registry";
 import { runCustom } from "generators/custom";
 import { CustomGeneratorStore } from "custom/store";
+import { StarterModal } from "editor/StarterModal";
+import type { StarterKit } from "generators/starters";
 
 /** What other plugins (for example Templater) can call: app.plugins.plugins["fantasy-content-generator"].api */
 export interface FantasyGeneratorApi {
@@ -44,6 +46,11 @@ export default class FantasyPlugin extends Plugin {
 			id: "new-generator",
 			name: "New custom generator",
 			callback: () => { void this.newGenerator(); },
+		});
+		this.addCommand({
+			id: "add-starter-set",
+			name: "Add a starter set",
+			callback: () => this.openStarters(),
 		});
 		this.addRibbonIcon("book", "Open fantasy generator", () => this.openGenerator());
 		this.registerEditorSuggest(new InlineGeneratorSuggester(this.app, this));
@@ -119,6 +126,26 @@ export default class FantasyPlugin extends Plugin {
 	/** Open the generator window; copied results go to the clipboard. */
 	openGenerator(): void {
 		new GeneratorModal(this.app, this, (text) => { void this.copyToClipboard(text); }).open();
+	}
+
+	/** Pick a starter set (a naming kit for a race or language) to add to the generator folder. */
+	openStarters(): void {
+		new StarterModal(this.app, this).open();
+	}
+
+	/** Write a starter kit into the generator folder (never overwriting) and open it. */
+	async addStarter(kit: StarterKit): Promise<void> {
+		try {
+			const { file, existed } = await this.customs.addStarter(kit);
+			await this.app.workspace.getLeaf(false).openFile(file);
+			const trigger = this.settings.inlineCallout || "@";
+			new Notice(existed
+				? `${file.path} is already in your generator folder, so it was left as it is.`
+				: `Added ${file.path}. Type ${trigger}${kit.key}, or ${trigger}${kit.key}Meaning where it has meanings.`);
+		} catch (e) {
+			console.error("Fantasy Content Generator: couldn't add the starter set", e);
+			new Notice(`Couldn't add the starter set: ${e instanceof Error ? e.message : String(e)}`);
+		}
 	}
 
 	/** Make a starter generator note (and the folder the first time) and open it. */

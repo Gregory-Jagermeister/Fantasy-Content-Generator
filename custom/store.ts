@@ -2,6 +2,8 @@ import { normalizePath, TAbstractFile, TFile, TFolder } from "obsidian";
 import type FantasyPlugin from "main";
 import { copyNote } from "generators/copies";
 import { CustomGenerator, EXAMPLE_NAMING_KIT, EXAMPLE_NOTE, parseGeneratorNote, resolveCustom, starterNote } from "generators/custom";
+import type { StarterKit } from "generators/starters";
+import { starterTitle } from "generators/starterChoices";
 
 /** Keeps the custom generators from the generator folder up to date. */
 export class CustomGeneratorStore {
@@ -100,6 +102,20 @@ export class CustomGeneratorStore {
             text = note.text.replace(`fcg-key: ${note.key}`, `fcg-key: ${note.key}${n}`).replace(`(my copy)"`, `(my copy ${n})"`).replace(`@${note.key}**`, `@${note.key}${n}**`);
         }
         return vault.create(path, text);
+    }
+
+    /**
+     * Write a starter kit into the generator folder as "<its name>.md".
+     * Never overwrites: if that note already exists it is returned unchanged.
+     */
+    async addStarter(kit: StarterKit): Promise<{ file: TFile; existed: boolean }> {
+        const { vault } = this.plugin.app;
+        const folder = await this.ensureFolder();
+        const path = normalizePath(`${folder}/${starterTitle(kit)}.md`);
+        const existing = vault.getAbstractFileByPath(path);
+        if (existing instanceof TFile) return { file: existing, existed: true };
+        if (existing) throw new Error(`${path} exists and isn't a note`);
+        return { file: await vault.create(path, kit.note), existed: false };
     }
 
     /**
