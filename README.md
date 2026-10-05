@@ -4,7 +4,9 @@ This is a plugin for Obsidian (<https://obsidian.md>) for the generation of fant
 
 ## Credits and Resources
 
-The names for Angel, Cave person, Dark elf, Demon, Dragon, Drow, Dwarf, Elf, Fairy, Gnome, Goblin, Half demon, Halfling, High elf, High fairy, Human, Ogre and Orc come from the Fantasy Name Generator package (<https://www.npmjs.com/package/fantasy-name-generator>, ISC licence).
+The starter sets (1.5.0) are built from:
+- Languages designed by Gregory-Jagermeister and generated with Vulgarlang (<https://www.vulgarlang.com>).
+- Human first names: US Social Security Administration baby-name data (<https://www.ssa.gov/oact/babynames/>, public domain). Surname parts collected by Gregory-Jagermeister.
 
 ## How to Use
 
@@ -18,6 +20,15 @@ The names for Angel, Cave person, Dark elf, Demon, Dragon, Drow, Dwarf, Elf, Fai
 ![Example](Obsidian-Fantasy-Content-Generator-Compressed.gif)
 
 ## Changelog
+
+### 1.5.0
+- **Starter sets**: 30 ready-made naming kits, one for each language (Dwarvish, Elvish, Kohrog for orcs and goblinoids, Draconic, Fey, Small folk for halflings and gnomes, Catfolk, Ratfolk, Tengu, Shadow for fetchlings, Cave person, Planar for angels, demons and kin, the four Elemental tongues and the half-races) and ten human cultures. Add one, or all of them at once, with the **Add a starter set** command or the button in **Settings › Custom generators**. See **Starter sets and meanings**.
+- **Meanings**: lists ending in `(meanings)` hold `word = meaning` rows. A generator that uses one also gets a **+ meaning** pick whose names say what they mean: *Nukho Nöndtrind (stone-helmet)*.
+- `{List.meaning}` gives the meaning side of a row; `fcg-capitalize: words` capitalises every word.
+- **The built-in race names are replaced by starter sets.** The 18 built-in name generators (Angel, Cave person, Dark elf, Demon, Dragon, Drow, Dwarf, Elf, Fairy, Gnome, Goblin, Half demon, Halfling, High elf, High fairy, Human, Ogre and Orc) and the name library they used have been removed. Their inline keys (`@ElfFemale`, `@DwarfMaleLastname` and the rest) are retired: typing one in full tells you which starter set to add instead. Notes you already generated are not affected.
+- **A tidier `@` list**: retired keys are no longer listed, every entry has a second line saying what it is (*Starter set · Elvish names*, *Settlements and buildings · Inns and taverns*), and the search reads that line too, so `@tavern` finds `@InnsTaverns`.
+- The generator window lists starter sets in their own group; the Names section (race, gender and family name) is gone.
+- The names retired in 1.3.1 are back as starter sets (Half-orc, Half-elf, Catfolk, Ratfolk, Tengu, Tiefling, Aasimar, Fetchling, Hobgoblin, Kobold, Ifrit, Oread, Sylph, Undine; for Tian, see the human sets). `@Catfolk`, `@HalfOrc`, `@Ratfolk` and `@Tengu` work again once their set is added.
 
 ### 1.4.0
 - **Note engine** for custom generators: dice and ranges, calls to other generators (`{@Key}`), repeats (`{3 x Drinks}`), tables rolled with a die (`## Size (d20)`), modifiers, lookups, remembered values and `{again}`. Notes from 1.3 work as before. See **Note engine**.
@@ -125,6 +136,27 @@ Two ways to make names that sound like one people:
 
 The **Example naming kit** note (made with the generator folder) shows both. A language tool such as Vulgarlang can make word lists to take samples from.
 
+### Starter sets and meanings
+
+**Add a starter set** (command palette, or **Settings › Custom generators**) lists every set with the races it is for; type a race to find its set, or pick **Add all starter sets** at the top. Sets are written into your generator folder as a normal note you can change, and a note that already exists is never overwritten.
+
+Each language set makes a **first name** learned from that language's words and a **family name** from two roots with meanings, chosen to suit the people (for dwarves, land and war: *Nöndtrind*, stone-helmet). Half-orc and half-elf names roll one of three upbringings: raised among their own kind, by a human relative (an English family name such as *Bloodaxe*), or by an orc or elf relative. Human sets mix real first names with new ones in the same style, and build family names the way that culture does (*Duncan Hughson*, *Malcolm Starham*, *Sora Kurokawa*, *Pavel Ivanenko*).
+
+Sets with meanings give two picks: `@Dwarvish` for a name and `@DwarvishMeaning` for a name with what it means. The French, Hispanic, Slavic, Middle Eastern, South Asian and Korean, Chinese and Vietnamese human sets use family names without meanings (from the father's name, or a real surname), so they give only the first.
+
+To add meanings to your own generator:
+
+```
+## Land (meanings)
+- nönd = stone
+- skök = iron
+
+## War (meanings)
+- trind = helmet
+```
+
+A pattern such as `{First} {Land}{War}` then gives *Durak Nöndtrind*, and the **+ meaning** pick gives *Durak Nöndtrind (stone-helmet)*. Meanings within one word join with "-", separate words with ", ". `{Land.meaning}` prints the meaning side instead (*stone*), and `{Land: stone}` looks up the word for a meaning.
+
 ### Copy to my folder
 
 In the generator window, Drinks, Dungeons and labyrinths, Inns and taverns, Metals and Ship have **Copy to my folder**: it writes the generator as a note (using your current word lists) that you can edit, as `@DrinksCopy` and so on. The built-in one is unchanged.
@@ -156,9 +188,9 @@ In the settings of the plugin you will Find settings and options to add your own
 
 ## Inline Generator
 
-Names starting with what you type are listed first, followed by names that contain it anywhere (so `@lastname` works too). If the suggestions close or never appear, another plugin may also use `@` (for example Natural Language Dates); change the trigger in settings.
+Keys starting with what you type are listed first, then keys that contain it, then keys whose second line contains it (so `@tavern` finds `@InnsTaverns`). Retired keys are not listed; typing one in full explains what replaced it. If the suggestions close or never appear, another plugin may also use `@` (for example Natural Language Dates); change the trigger in settings.
 
-If you found yourself needing a quick name for an Elf or really wanting a quick dungeon description then look no further then the Inline generator. You can activate this by using the Callout token (Default is set to '@', can be changed in settings) and scrolling through the list of generators possible.
+If you found yourself needing a quick name for an Elf (add the Elvish starter set first) or really wanting a quick dungeon description then look no further than the Inline generator. You can activate this by using the Callout token (Default is set to '@', can be changed in settings) and scrolling through the list of generators possible.
 
 ### Inline Example
 
@@ -189,7 +221,7 @@ Below is a table for all the settings in this plugin
   - ~~Group Generator.~~
 - ~~Randomization within a note.~~
 - Rewrite the generators retired in 1.3.1 and 1.3.2:
-  - Names: Aasimar, Catfolk, Fetchling, Half-elf, Half-orc, Hobgoblin, Ifrit, Kobold, Oread, Ratfolk, Sylph, Tengu, Tian, Tiefling, Undine
+  - ~~Names: Aasimar, Catfolk, Fetchling, Half-elf, Half-orc, Hobgoblin, Ifrit, Kobold, Oread, Ratfolk, Sylph, Tengu, Tian, Tiefling, Undine~~ (starter sets in 1.5.0; Tian: the human sets)
   - Airships, Artifacts, Animal groups, Magical trees, Trading post
   - Religion, Groups
 - Possibly more Generation type.
