@@ -48,15 +48,51 @@ export function keyFromName(name: string): string {
         .join("");
 }
 
+/**
+ * The patterns written in the note as \`\`\`pattern code blocks, in order. Other code blocks are skipped,
+ * so an example shown inside a \`\`\`\` block isn't read.
+ */
+export function patternBlocks(body: string): string[] {
+    const blocks: string[] = [];
+    let fence: { char: string; len: number; lines: string[] | null } | null = null;
+    for (const line of body.split(/\r?\n/)) {
+        if (fence) {
+            const close = /^\s*(`{3,}|~{3,})\s*$/.exec(line);
+            if (close && close[1][0] === fence.char && close[1].length >= fence.len) {
+                if (fence.lines) blocks.push(fence.lines.join("\n").trim());
+                fence = null;
+            } else fence.lines?.push(line);
+            continue;
+        }
+        const open = /^\s*(`{3,}|~{3,})\s*(\S*)/.exec(line);
+        if (open) fence = { char: open[1][0], len: open[1].length, lines: open[2].toLowerCase() === "pattern" ? [] : null };
+    }
+    return blocks.filter(Boolean);
+}
+
 /** The note text without its properties block. */
 export function stripFrontmatter(text: string): string {
     const m = /^---\r?\n[\s\S]*?\r?\n---[ \t]*(\r?\n|$)/.exec(text);
     return m ? text.slice(m[0].length) : text;
 }
 
+/** The last "|" outside {braces} (a "|" inside {if …: a | b} or {A|B} isn't a weight). */
+function lastTopBar(raw: string): number {
+    let depth = 0;
+    let bar = -1;
+    for (let i = 0; i < raw.length; i++) {
+        const c = raw[i];
+        if (c === "\\" && "{}|".includes(raw[i + 1] ?? "")) { i++; continue; }
+        if (c === "{") depth++;
+        else if (c === "}") depth = Math.max(0, depth - 1);
+        else if (c === "|" && depth === 0) bar = i;
+    }
+    return bar;
+}
+
 /** "Irith | 3" -> {item: "Irith", weight: 3}; weight defaults to 1. */
 export function parseEntry(raw: string): WeightedEntry | null {
-    const bar = raw.lastIndexOf("|");
+    const bar = lastTopBar(raw);
     let item = raw;
     let weight = 1;
     if (bar >= 0) {
@@ -152,8 +188,17 @@ export function parseGeneratorNote(path: string, fm: Record<string, unknown> | u
     const { lists, names, info } = parsed;
     problems.push(...parsed.problems);
     let patterns = [...asStringList(fm?.patterns), ...asStringList(fm?.pattern)].map((p) => p.trim()).filter(Boolean);
+    const blocks = patternBlocks(stripFrontmatter(body));
+    if (blocks.length) {
+        if (patterns.length) problems.push("this note has a pattern block, so the pattern in its properties is ignored");
+        patterns = blocks;
+    }
     if (!lists.size) problems.push("no lists found (a list is a ## heading followed by - items)");
     for (const [id, entries] of lists) if (!entries.length) problems.push(`the list "${names.get(id)}" is empty`);
+    for (const listName of names.values()) {
+        const word = /^(if|each|repeat)\s/i.exec(listName);
+        if (word) problems.push(`"## ${listName}" starts with "${word[1]}", which starts a condition or loop inside {}. Rename the list so {${listName}} works`);
+    }
     if (!patterns.length && lists.size) patterns = [`{${[...names.values()][0]}}`];
     const src = { name, lists, listNames: names, listInfo: info };
     for (const p of patterns) problems.push(...checkText(p, `the pattern "${p}"`, src));
@@ -200,9 +245,12 @@ export function runCustom(gen: CustomGenerator, host: EngineHost = {}, depth = 0
 export function starterNote(name: string): string {
     return `---
 fcg-generator: ${name}
-pattern: "{First} {Family}"
 ---
 Type @${keyFromName(name)} in any note to use this generator.
+
+\`\`\`pattern
+{First} {Family}
+\`\`\`
 
 ## First
 - First A
@@ -219,17 +267,19 @@ Type @${keyFromName(name)} in any note to use this generator.
 export const EXAMPLE_NOTE = `---
 fcg-generator: Example generator
 fcg-key: Example
-pattern: |
-  {First} {Family}, {Role}
-  Carries {1d6} coins and {2 x Item}.
-  Mood: {Mood}
 ---
 # How this generator works
 
 Type **@Example** in any note (or pick it in the generator window under Custom). Replace the placeholder words with your own.
 
+\`\`\`pattern
+{First} {Family}, {Role}
+Carries {1d6} coins and {2 x Item}.
+Mood: {Mood}
+\`\`\`
+
 - \`fcg-generator\` names the generator. \`fcg-key\` sets the inline key; without it the key is the name without spaces (here it would be @ExampleGenerator).
-- \`pattern\` is used every time; \`pattern: |\` lets it run over several lines. \`patterns\` (a list) picks one at random each time.
+- The \`pattern\` code block above is what the generator writes, line for line. Add more \`pattern\` blocks and one is picked at random each time. (A \`pattern\` property still works too.)
 - \`{List}\` picks from the list under \`## List\`. \`{A|B}\` picks from either list. \`- item | 3\` makes an item three times as likely.
 - \`{1d6}\`, \`{2d6+1}\`, \`{1-4}\` roll dice or a range. \`{2 x Item}\` gives two different items.
 - A heading like \`## Mood (d6)\` makes a table: each row starts with the numbers it covers.

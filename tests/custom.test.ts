@@ -114,9 +114,9 @@ test("inline ranking: starts-with first, then anywhere", () => {
 });
 
 test("starter and example notes are valid generators", () => {
-    const starter = parseGeneratorNote("G/New generator.md", { "fcg-generator": "New generator", pattern: "{First} {Family}" }, starterNote("New generator"));
+    const starter = parseGeneratorNote("G/New generator.md", { "fcg-generator": "New generator" }, starterNote("New generator"));
     assert.ok(starter && !starter.problems.length, starter?.problems.join());
-    const ex = parseGeneratorNote("G/Example generator.md", { "fcg-generator": "Example generator", "fcg-key": "Example", pattern: "{First} {Family}, {Role}\nCarries {1d6} coins and {2 x Item}.\nMood: {Mood}" }, EXAMPLE_NOTE);
+    const ex = parseGeneratorNote("G/Example generator.md", { "fcg-generator": "Example generator", "fcg-key": "Example" }, EXAMPLE_NOTE);
     assert.ok(ex && !ex.problems.length, ex?.problems.join());
     assert.equal(ex.lists.size, 5, "the explanation bullets under # are not a list");
     for (let i = 0; i < 50; i++) assert.match(runCustom(ex), /^First [ABC] Family [AB], Role [AB]\nCarries [1-6] coins and Item [ABC] and Item [ABC]\.\nMood: Mood [ABC]$/);

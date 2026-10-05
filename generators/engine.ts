@@ -1,4 +1,4 @@
-/* The note engine (1.4.0): evaluates patterns in generator notes.
+/* The note engine (1.4.0, tools added in 1.6.0): evaluates patterns in generator notes.
    Pure functions, no Obsidian imports, unit-tested.
 
    Inside {braces}:
@@ -16,7 +16,15 @@
    "## Name (learn)" lists hold sample names; picking from one makes a new name in their style.
    "## Name (meanings)" lists hold "- word = meaning" rows; picking one prints the word and records
    the meaning, so a name can show what it means: Nöndtrind (stone-helmet).
-   \{ and \} are literal braces. */
+   1.6.0 tools (braces may nest):
+     {if $x > 60: A | B}     if / else in a sentence; > < >= <= = != with and, or, not; text ignores case
+     {repeat 1d4: pattern}   a pattern several times ($i counts from 1)
+     {each List: pattern}    once per row of a list, in order ($item, $meaning, $i, $first, $last)
+     {#if …} {else if …} {else} {/if}, {#each List} {else} {/each}, {#repeat N} {/repeat}
+                             blocks for whole passages; a tag alone on its line takes its line with it
+     {a List} {A $x}         "a" or "an" in front of the result
+     {$x * 3 / 2} {(1 + 2)}  maths; division rounds down
+   \{ \} and \| are literal. */
 import { pickWeighted, randomInt } from "utils/random";
 
 export interface WeightedEntry {
@@ -152,7 +160,7 @@ function spans(ns: number[]): string {
 /* ---------------- pattern scanning ---------------- */
 
 interface Piece {
-    /** Literal text, or the inside of a {brace} */
+    /** Literal text, or the inside of a {brace} (nested braces and escapes kept as written) */
     text: string;
     isExpr: boolean;
     /** Brace pieces: alone on their line (only whitespace around them) */
@@ -161,19 +169,70 @@ interface Piece {
     indent?: string;
 }
 
-/** Split a pattern into literal text and {expressions}. Throws on unbalanced braces. */
+/** Characters a backslash makes literal: \{ \} \| */
+const ESCAPABLE = "{}|";
+
+function isEscape(s: string, i: number): boolean {
+    return s[i] === "\\" && i + 1 < s.length && ESCAPABLE.includes(s[i + 1]);
+}
+
+/** Index of the "}" closing the "{" at `start` (nested braces and escapes skipped); -1 if there is none. */
+function closeBrace(s: string, start: number): number {
+    let depth = 0;
+    for (let i = start; i < s.length; i++) {
+        if (isEscape(s, i)) { i++; continue; }
+        if (s[i] === "{") depth++;
+        else if (s[i] === "}" && --depth === 0) return i;
+    }
+    return -1;
+}
+
+/**
+ * First index from `from` where `hit` is true outside any {braces} and escapes
+ * (and, with `quotes`, outside "double quotes"); -1 if none.
+ */
+function scanTop(s: string, from: number, quotes: boolean, hit: (i: number) => boolean): number {
+    let depth = 0;
+    let quoted = false;
+    for (let i = from; i < s.length; i++) {
+        if (isEscape(s, i)) { i++; continue; }
+        const c = s[i];
+        if (quotes && depth === 0 && c === '"') { quoted = !quoted; continue; }
+        if (quoted) continue;
+        if (c === "{") depth++;
+        else if (c === "}") depth--;
+        else if (depth === 0 && hit(i)) return i;
+    }
+    return -1;
+}
+
+/** Split a condition at a word ("or", "and") standing between spaces, outside braces and quotes. */
+function splitTopWord(s: string, word: string): string[] {
+    const re = new RegExp(String.raw`^\s+${word}\s+`, "i");
+    const parts: string[] = [];
+    let last = 0;
+    for (;;) {
+        const i = scanTop(s, last, true, (j) => /\s/.test(s[j]) && re.test(s.slice(j)));
+        if (i < 0) break;
+        parts.push(s.slice(last, i));
+        last = i + (re.exec(s.slice(i)) as RegExpExecArray)[0].length;
+    }
+    parts.push(s.slice(last));
+    return parts;
+}
+
+/** Split a pattern into literal text and {expressions}. Braces may nest. Throws on unbalanced braces. */
 export function scanPattern(pattern: string): Piece[] {
     const pieces: Piece[] = [];
     let lit = "";
     let i = 0;
     while (i < pattern.length) {
         const c = pattern[i];
-        if (c === "\\" && (pattern[i + 1] === "{" || pattern[i + 1] === "}")) { lit += pattern[i + 1]; i += 2; continue; }
+        if (isEscape(pattern, i)) { lit += pattern[i + 1]; i += 2; continue; }
         if (c === "}") throw new Error(`a "}" without a "{" in: ${pattern}`);
         if (c !== "{") { lit += c; i++; continue; }
-        const end = pattern.indexOf("}", i + 1);
-        const nested = pattern.indexOf("{", i + 1);
-        if (end < 0 || (nested >= 0 && nested < end)) throw new Error(`a "{" without a matching "}" in: ${pattern}`);
+        const end = closeBrace(pattern, i);
+        if (end < 0) throw new Error(`a "{" without a matching "}" in: ${pattern}`);
         const lineStart = pattern.lastIndexOf("\n", i - 1) + 1;
         const nextNl = pattern.indexOf("\n", end);
         const lineEnd = nextNl < 0 ? pattern.length : nextNl;
@@ -186,6 +245,193 @@ export function scanPattern(pattern: string): Piece[] {
     }
     if (lit) pieces.push({ text: lit, isExpr: false });
     return pieces;
+}
+
+/* ---------------- blocks: {#if} {#each} {#repeat} ---------------- */
+
+type Node =
+    | { t: "text"; text: string }
+    | { t: "expr"; piece: Piece }
+    | { t: "if"; branches: { cond: string; body: Node[] }[]; otherwise?: Node[] }
+    | { t: "each"; list: string; body: Node[]; otherwise?: Node[] }
+    | { t: "repeat"; count: string; body: Node[] };
+
+type BlockNode = Extract<Node, { t: "if" | "each" | "repeat" }>;
+
+const TAG_RE = /^(#if|#each|#repeat|else\s+if|else|\/if|\/each|\/repeat)(?:\s+([\s\S]*))?$/i;
+const PARSED = new Map<string, Node[]>();
+
+/**
+ * A pattern as a tree of text, expressions and blocks. A block tag alone on its line takes the
+ * whole line with it, so blocks don't leave blank lines. Throws on tags that don't match up.
+ */
+export function parsePattern(pattern: string): Node[] {
+    const cached = PARSED.get(pattern);
+    if (cached) return cached;
+    const root: Node[] = [];
+    const stack: { node: BlockNode; parent: Node[]; sawElse: boolean }[] = [];
+    let out = root;
+    let swallow = false;
+    for (const p of scanPattern(pattern)) {
+        if (!p.isExpr) {
+            const text = swallow ? p.text.replace(/^[ \t]*\r?\n/, "") : p.text;
+            swallow = false;
+            if (text) out.push({ t: "text", text });
+            continue;
+        }
+        swallow = false;
+        const tag = TAG_RE.exec(p.text.trim());
+        if (!tag) { out.push({ t: "expr", piece: p }); continue; }
+        if (p.alone) {
+            const last = out[out.length - 1];
+            if (last?.t === "text") { last.text = last.text.replace(/[ \t]*$/, ""); if (!last.text) out.pop(); }
+            swallow = true;
+        }
+        const word = tag[1].toLowerCase().replace(/\s+/, " ");
+        const arg = (tag[2] ?? "").trim();
+        const top = stack[stack.length - 1];
+        if (word === "#if" || word === "#each" || word === "#repeat") {
+            if (!arg) throw new Error(word === "#if" ? "{#if} needs a condition, like {#if $wealth > 60}" : word === "#each" ? "{#each} needs a list, like {#each Rumours}" : "{#repeat} needs a count, like {#repeat 1d4}");
+            const node: BlockNode = word === "#if" ? { t: "if", branches: [{ cond: arg, body: [] }] } : word === "#each" ? { t: "each", list: arg, body: [] } : { t: "repeat", count: arg, body: [] };
+            out.push(node);
+            stack.push({ node, parent: out, sawElse: false });
+            out = node.t === "if" ? node.branches[0].body : node.body;
+        } else if (word === "else if") {
+            if (top?.node.t !== "if") throw new Error("{else if} has no {#if} before it");
+            if (top.sawElse) throw new Error("{else if} can't come after {else}");
+            if (!arg) throw new Error("{else if} needs a condition");
+            const branch = { cond: arg, body: [] as Node[] };
+            top.node.branches.push(branch);
+            out = branch.body;
+        } else if (word === "else") {
+            if (arg) throw new Error(`{else ${arg}}: did you mean {else if ${arg}}?`);
+            if (!top || top.node.t === "repeat") throw new Error("{else} only goes inside {#if} or {#each}");
+            if (top.sawElse) throw new Error("a block has two {else}");
+            top.sawElse = true;
+            top.node.otherwise = [];
+            out = top.node.otherwise;
+        } else {
+            const kind = word.slice(1);
+            if (!top) throw new Error(`{/${kind}} has no {#${kind}} before it`);
+            if (top.node.t !== kind) throw new Error(`{/${kind}} closes a {#${top.node.t}}; add {/${top.node.t}} first`);
+            stack.pop();
+            out = top.parent;
+        }
+    }
+    if (stack.length) {
+        const open = stack[stack.length - 1].node.t;
+        throw new Error(`{#${open}} has no {/${open}}`);
+    }
+    if (PARSED.size > 500) PARSED.clear();
+    PARSED.set(pattern, root);
+    return root;
+}
+
+/** "if $x > 1: a | b" -> its parts; null without a ":". The first "|" outside braces starts the else part. */
+function splitIf(rest: string): { cond: string; then: string; otherwise: string } | null {
+    const colon = scanTop(rest, 0, true, (j) => rest[j] === ":");
+    if (colon < 0) return null;
+    const body = rest.slice(colon + 1);
+    const bar = scanTop(body, 0, false, (j) => body[j] === "|");
+    return {
+        cond: rest.slice(0, colon).trim(),
+        then: (bar < 0 ? body : body.slice(0, bar)).trim(),
+        otherwise: bar < 0 ? "" : body.slice(bar + 1).trim(),
+    };
+}
+
+/** "3: pattern" -> ["3", "pattern"]; no ":" -> [rest, null]. */
+function splitHead(rest: string): [string, string | null] {
+    const colon = scanTop(rest, 0, true, (j) => rest[j] === ":");
+    return colon < 0 ? [rest.trim(), null] : [rest.slice(0, colon).trim(), rest.slice(colon + 1).trim()];
+}
+
+const KEYWORD_RE = /^(if|repeat|each)\s+([\s\S]+)$/i;
+const ARTICLE_RE = /^(a|an)\s+([\s\S]+)$/i;
+const COMPARE = [">=", "<=", "!=", "==", ">", "<", "="];
+
+/** The first comparison operator outside braces and quotes. */
+function findCompare(s: string): { i: number; op: string } | null {
+    let op = "";
+    const i = scanTop(s, 0, true, (j) => { op = COMPARE.find((o) => s.startsWith(o, j)) ?? ""; return op !== ""; });
+    return i < 0 ? null : { i, op };
+}
+
+/**
+ * {a X} / {an X}: the article form, unless the whole thing is a list name or a list named "A" used
+ * with a modifier, lookup or union ({A + 2}, {A with d6}, {A : key}, {A | B}).
+ */
+function articleParts(e: string, has: (name: string) => boolean): [string, string] | null {
+    const art = ARTICLE_RE.exec(e);
+    if (!art || has(e)) return null;
+    if (has(art[1]) && /^([+\-|:.]|with\s)/i.test(art[2])) return null;
+    return [art[1], art[2].trim()];
+}
+
+/** "a" or "an" for this text: by its first letter, with common exceptions (an hour, a unicorn, a one-eyed, an 8). */
+export function article(text: string): "a" | "an" {
+    const w = text.replace(/^[^\p{L}\p{N}]+/u, "").toLowerCase();
+    if (!w) return "a";
+    const digits = /^\d+/.exec(w);
+    if (digits) {
+        const d = digits[0];
+        if (d[0] === "8") return "an";
+        const lead = d.length % 3 === 2 ? d.slice(0, 2) : "";
+        return lead === "11" || lead === "18" ? "an" : "a";
+    }
+    if (/^(hour|honest|honou?r|heir)/.test(w)) return "an";
+    if (/^(uni|use|usu|uti|eu|ewe|once|one(?!\p{L}))/u.test(w)) return "a";
+    return /^[aeiou]/.test(w) ? "an" : "a";
+}
+
+/* ---------------- number expressions ---------------- */
+
+type NumNode = { k: "term"; t: string } | { k: "neg"; a: NumNode } | { k: "op"; op: string; a: NumNode; b: NumNode };
+const NUMBERS = new Map<string, NumNode | null>();
+
+/** Parse dice, ranges, whole numbers and $names with + - * / and brackets; null if it isn't one. */
+function parseNumber(expr: string): NumNode | null {
+    if (NUMBERS.has(expr)) return NUMBERS.get(expr) ?? null;
+    const s = expr;
+    let i = 0;
+    const ws = () => { while (i < s.length && /\s/.test(s[i])) i++; };
+    const primary = (): NumNode | null => {
+        ws();
+        if (s[i] === "(") {
+            i++;
+            const n = sum();
+            ws();
+            if (!n || s[i] !== ")") return null;
+            i++;
+            return n;
+        }
+        if (s[i] === "-") { i++; const a = primary(); return a && { k: "neg", a }; }
+        const m = TERM_RE.exec(s.slice(i));
+        if (!m) return null;
+        i += m[0].length;
+        return { k: "term", t: m[1] };
+    };
+    const chain = (next: () => NumNode | null, ops: string): NumNode | null => {
+        let a = next();
+        for (;;) {
+            if (!a) return null;
+            ws();
+            const op = s[i];
+            if (op === undefined || !ops.includes(op)) return a;
+            i++;
+            const b = next();
+            if (!b) return null;
+            a = { k: "op", op, a, b };
+        }
+    };
+    const product = () => chain(primary, "*/");
+    const sum = (): NumNode | null => chain(product, "+-");
+    const n = sum();
+    ws();
+    const result = n && i === s.length ? n : null;
+    if (NUMBERS.size > 2000) NUMBERS.clear();
+    NUMBERS.set(expr, result);
+    return result;
 }
 
 /** "a", "a and b", "a, b and c". */
@@ -340,18 +586,139 @@ export class Evaluator {
         throw new Error(`${this.src.name}: ${message}`);
     }
 
+    private step(): void {
+        if (++this.steps > MAX_STEPS) this.fail("this makes too much text at once (a list may be calling itself through {again}, repeats or loops)");
+    }
+
     private pattern(text: string, ctx: Ctx): string {
+        let nodes: Node[];
+        try {
+            nodes = parsePattern(text);
+        } catch (e) {
+            this.fail(e instanceof Error ? e.message : String(e));
+        }
+        return this.nodes(nodes, ctx);
+    }
+
+    private nodes(list: Node[], ctx: Ctx): string {
         let out = "";
-        for (const p of scanPattern(text)) {
-            if (!p.isExpr) { this.noteBreak(p.text); out += p.text; continue; }
-            if (++this.steps > MAX_STEPS) this.fail("this makes too much text at once (a list may be calling itself through {again} or repeats)");
-            const before = this.meaningLog.length;
-            const text = this.expr(p.text.trim(), ctx, p);
-            // Text that recorded no meaning (a first name, a call, a number) still splits words if it has a space.
-            if (this.meaningLog.length === before) this.noteBreak(text);
-            out += text;
+        for (const n of list) {
+            if (n.t === "text") { this.noteBreak(n.text); out += n.text; continue; }
+            this.step();
+            if (n.t === "expr") {
+                const before = this.meaningLog.length;
+                const text = this.expr(n.piece.text.trim(), ctx, n.piece);
+                // Text that recorded no meaning (a first name, a call, a number) still splits words if it has a space.
+                if (this.meaningLog.length === before) this.noteBreak(text);
+                out += text;
+            } else if (n.t === "if") {
+                const branch = n.branches.find((b) => this.cond(b.cond, ctx));
+                out += this.nodes(branch ? branch.body : n.otherwise ?? [], ctx);
+            } else if (n.t === "each") {
+                const id = this.eachList(n.list);
+                const rows = this.src.lists.get(id) ?? [];
+                if (!rows.length) out += this.nodes(n.otherwise ?? [], ctx);
+                else out += this.loop(rows.length, (i) => this.setItem(id, rows[i]), () => this.nodes(n.body, ctx)).join("");
+            } else {
+                out += this.loop(this.count(n.count, ctx), () => undefined, () => this.nodes(n.body, ctx)).join("");
+            }
         }
         return out;
+    }
+
+    /**
+     * Run `body` n times with $i (from 1), $first and $last set; `each` sets the round's other values.
+     * Loop values are put back afterwards, so they belong to their loop.
+     */
+    private loop(n: number, each: (i: number) => void, body: () => string): string[] {
+        if (n > MAX_REPEAT) this.fail(`a loop can run at most ${MAX_REPEAT} rounds (asked for ${n})`);
+        const saved = LOOP_VARS.map((k) => [k, this.vars.get(k)] as const);
+        const out: string[] = [];
+        try {
+            for (let i = 0; i < n; i++) {
+                this.step();
+                if (i) this.meaningLog.push(null);
+                this.vars.set("i", i + 1);
+                this.vars.set("first", i === 0 ? 1 : 0);
+                this.vars.set("last", i === n - 1 ? 1 : 0);
+                each(i);
+                out.push(body());
+            }
+        } finally {
+            for (const [k, v] of saved) {
+                if (v === undefined) this.vars.delete(k);
+                else this.vars.set(k, v);
+            }
+        }
+        return out;
+    }
+
+    /** {each List}: the list's id, or a clear message. */
+    private eachList(name: string): string {
+        const id = this.findList(name);
+        if (id === undefined) this.fail(`{each ${name.trim()}} needs a list "## ${name.trim()}"`);
+        return id;
+    }
+
+    /** $item (the row as it would print) and $meaning for one row of an {each} loop. Records no meanings. */
+    private setItem(id: string, row: ListRow): void {
+        const mark = this.meaningLog.length;
+        const text = this.src.listInfo.get(id)?.kind === "learn" ? row.item : this.pattern(row.item, { list: id, row, again: 0 }).trim();
+        this.meaningLog.length = mark;
+        this.vars.set("item", text);
+        this.vars.set("meaning", row.meaning ?? "");
+    }
+
+    /** A short form: {if …: A | B}, {repeat N: …} or {each List: …}. */
+    private keyword(word: string, rest: string, ctx: Ctx, piece: Piece): string {
+        const lay = (items: string[]) => {
+            const kept = items.map((t) => t.trim()).filter(Boolean);
+            return piece.alone ? kept.join(`\n${piece.indent ?? ""}`) : joinNatural(kept);
+        };
+        if (word === "if") {
+            const parts = splitIf(rest);
+            if (!parts) this.fail(`{if ${rest}} needs a ":" after the condition, like {if $wealth > 60: rich | poor}`);
+            return this.pattern(this.cond(parts.cond, ctx) ? parts.then : parts.otherwise, ctx).trim();
+        }
+        const [head, body] = splitHead(rest);
+        if (word === "repeat") {
+            if (body === null) this.fail(`{repeat ${rest}} needs a ":" after the count, like {repeat 1d4: {Item}}`);
+            return lay(this.loop(this.count(head, ctx), () => undefined, () => this.pattern(body, ctx)));
+        }
+        const id = this.eachList(head);
+        const rows = this.src.lists.get(id) ?? [];
+        return lay(this.loop(rows.length, (i) => this.setItem(id, rows[i]), () => (body === null ? String(this.vars.get("item") ?? "") : this.pattern(body, ctx))));
+    }
+
+    /* ----- conditions ----- */
+
+    /** A condition: comparisons joined by "and", "or" and "not". Only what's needed is worked out. */
+    private cond(c: string, ctx: Ctx): boolean {
+        if (!c.trim()) this.fail("a condition is empty");
+        return splitTopWord(c, "or").some((o) => splitTopWord(o, "and").every((a) => this.condPart(a.trim(), ctx)));
+    }
+
+    private condPart(a: string, ctx: Ctx): boolean {
+        const not = /^not\s+/i.exec(a);
+        if (not) return !this.condPart(a.slice(not[0].length).trim(), ctx);
+        if (!a) this.fail("a condition has \"and\", \"or\" or \"not\" with nothing next to it");
+        const cmp = findCompare(a);
+        if (!cmp) return truthy(this.operand(a, ctx));
+        const left = a.slice(0, cmp.i).trim();
+        const right = a.slice(cmp.i + cmp.op.length).trim();
+        if (!left || !right) this.fail(`the comparison "${a}" is missing a side`);
+        return compare(this.operand(left, ctx), cmp.op, this.operand(right, ctx));
+    }
+
+    /** One side of a comparison: "quoted text", $name (undefined when unset), {a pattern}, a number expression, or plain text. */
+    private operand(s: string, ctx: Ctx): Value | undefined {
+        const q = /^"([\s\S]*)"$/.exec(s);
+        if (q) return q[1];
+        const v = VAR_RE.exec(s);
+        if (v) return this.vars.get(v[1]);
+        if (s.includes("{")) return this.pattern(s, ctx).trim();
+        if (isNumeric(s)) return this.number(s);
+        return s;
     }
 
     private expr(e: string, ctx: Ctx, piece: Piece): string {
@@ -362,12 +729,13 @@ export class Evaluator {
         if (assign) {
             const [, name, op, rhs] = assign;
             if (op === "=") {
-                this.vars.set(name, isNumeric(rhs) ? this.number(rhs) : this.value(rhs.trim(), ctx));
+                const quoted = /^"([\s\S]*)"$/.exec(rhs.trim());
+                this.vars.set(name, quoted ? quoted[1] : isNumeric(rhs) ? this.number(rhs) : this.expr(rhs.trim(), ctx, { text: rhs, isExpr: true }));
             } else {
                 const cur = this.vars.get(name) ?? 0;
-                if (typeof cur !== "number") this.fail(`$${name} holds text ("${cur}"), so it can't be added to`);
+                if (typeof cur !== "number" && !Number.isFinite(Number(cur))) this.fail(`$${name} holds text ("${cur}"), so it can't be added to`);
                 const n = this.number(rhs);
-                this.vars.set(name, op === "+=" ? cur + n : cur - n);
+                this.vars.set(name, op === "+=" ? Number(cur) + n : Number(cur) - n);
             }
             return "";
         }
@@ -375,10 +743,22 @@ export class Evaluator {
         const v = VAR_RE.exec(e);
         if (v) return String(this.vars.get(v[1]) ?? 0);
 
+        const kw = KEYWORD_RE.exec(e);
+        if (kw) return this.keyword(kw[1].toLowerCase(), kw[2], ctx, piece);
+
         const rep = /^(.+?)\s+x\s+(.+)$/is.exec(e);
         if (rep && this.isCount(rep[1].trim())) return this.repeat(rep[1].trim(), rep[2].trim(), ctx, piece);
 
         if (isNumeric(e)) return String(this.number(e));
+
+        const art = articleParts(e, (n) => this.findList(n) !== undefined);
+        if (art) {
+            const text = this.expr(art[1], ctx, { text: art[1], isExpr: true });
+            if (!text) return "";
+            const a = article(text);
+            return `${art[0].charAt(0) === "A" ? a.charAt(0).toUpperCase() + a.slice(1) : a} ${text}`;
+        }
+        if (e.includes("{") && this.findList(e) === undefined && !/^[^{]*:/.test(e)) return this.pattern(e, ctx).trim();
         return this.value(e, ctx);
     }
 
@@ -389,29 +769,22 @@ export class Evaluator {
         return !!look && this.findList(look[1]) !== undefined;
     }
 
-    /** A number from dice, ranges, whole numbers and $names joined by + and -. */
+    /** A number from dice, ranges, whole numbers and $names with + - * / and brackets. Division rounds down. */
     private number(expr: string): number {
-        let s = expr.trim();
-        let total = 0;
-        let sign = 1;
-        let first = true;
-        while (s.length) {
-            if (!first) {
-                const op = /^([+-])\s*/.exec(s);
-                if (!op) this.fail(`"${expr}" isn't a number, dice or range`);
-                sign = op[1] === "-" ? -1 : 1;
-                s = s.slice(op[0].length);
-            } else if (s.startsWith("-")) {
-                sign = -1;
-                s = s.slice(1).trimStart();
-            }
-            const t = TERM_RE.exec(s);
-            if (!t) this.fail(`"${expr}" isn't a number, dice or range`);
-            total += sign * this.term(t[1]);
-            s = s.slice(t[0].length).trimStart();
-            first = false;
-        }
-        return total;
+        const tree = parseNumber(expr);
+        if (!tree) this.fail(`"${expr.trim()}" isn't a number, dice or range`);
+        const run = (n: NumNode): number => {
+            if (n.k === "term") return this.term(n.t);
+            if (n.k === "neg") return -run(n.a);
+            const a = run(n.a);
+            const b = run(n.b);
+            if (n.op === "+") return a + b;
+            if (n.op === "-") return a - b;
+            if (n.op === "*") return a * b;
+            if (b === 0) this.fail(`"${expr.trim()}" divides by 0`);
+            return Math.floor(a / b);
+        };
+        return run(tree);
     }
 
     private term(t: string): number {
@@ -443,7 +816,7 @@ export class Evaluator {
 
     /** A count for a repeat: a number expression, or a lookup whose result is a number. */
     private count(expr: string, ctx: Ctx): number {
-        const n = isNumeric(expr) ? this.number(expr) : Number(this.value(expr, ctx).trim());
+        const n = isNumeric(expr) ? this.number(expr) : Number((expr.includes("{") ? this.pattern(expr, ctx) : this.value(expr, ctx)).trim());
         if (!Number.isFinite(n)) this.fail(`"${expr}" didn't give a number to repeat by`);
         return Math.max(0, Math.floor(n));
     }
@@ -616,6 +989,7 @@ export class Evaluator {
         let key: Value;
         const v = VAR_RE.exec(keyExpr);
         if (v) key = this.vars.get(v[1]) ?? 0;
+        else if (keyExpr.includes("{")) key = this.pattern(keyExpr, ctx).trim();
         else if (isNumeric(keyExpr) && /\d/.test(keyExpr)) key = this.number(keyExpr);
         else key = keyExpr;
 
@@ -643,25 +1017,50 @@ export class Evaluator {
     }
 }
 
-/** Is this a sum of numbers, dice, ranges and $names? */
+/** Is this a number expression: numbers, dice, ranges and $names with + - * / and brackets? */
 export function isNumeric(expr: string): boolean {
-    let s = expr.trim();
-    if (!s) return false;
-    let first = true;
-    while (s.length) {
-        if (!first) {
-            const op = /^[+-]\s*/.exec(s);
-            if (!op) return false;
-            s = s.slice(op[0].length);
-        } else if (s.startsWith("-")) {
-            s = s.slice(1).trimStart();
-        }
-        const t = TERM_RE.exec(s);
-        if (!t) return false;
-        s = s.slice(t[0].length).trimStart();
-        first = false;
+    return expr.trim() !== "" && parseNumber(expr) !== null;
+}
+
+/** Loop values, put back when their loop ends. */
+const LOOP_VARS = ["i", "item", "first", "last", "meaning"];
+
+/** Unset, empty and 0 are false; anything else is true. */
+function truthy(v: Value | undefined): boolean {
+    if (v === undefined) return false;
+    if (typeof v === "number") return v !== 0;
+    const t = v.trim();
+    return t !== "" && t !== "0";
+}
+
+function asNumber(v: Value | undefined): number | undefined {
+    if (typeof v === "number") return v;
+    if (v === undefined || v.trim() === "") return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
+}
+
+/** Numbers compare as numbers; anything else as text, ignoring case. An unset value is 0 next to a number, else "". */
+function compare(l: Value | undefined, op: string, r: Value | undefined): boolean {
+    let ln = asNumber(l);
+    let rn = asNumber(r);
+    if (l === undefined && rn !== undefined) ln = 0;
+    if (r === undefined && ln !== undefined) rn = 0;
+    let diff: number;
+    if (ln !== undefined && rn !== undefined) diff = ln - rn;
+    else {
+        const ls = String(l ?? "").trim().toLowerCase();
+        const rs = String(r ?? "").trim().toLowerCase();
+        diff = ls < rs ? -1 : ls > rs ? 1 : 0;
     }
-    return true;
+    switch (op) {
+        case ">": return diff > 0;
+        case "<": return diff < 0;
+        case ">=": return diff >= 0;
+        case "<=": return diff <= 0;
+        case "!=": return diff !== 0;
+        default: return diff === 0;
+    }
 }
 
 /** Collapse runs of spaces left inside a line by expressions that printed nothing; trim the ends. */
@@ -671,16 +1070,56 @@ export function tidy(text: string): string {
 
 /* ---------------- static checks ---------------- */
 
-/** Every {expression} in a pattern or row, for checking. Unbalanced braces are reported. */
+/** Every {expression} and block in a pattern or row, for checking. Unbalanced braces and tags are reported. */
 export function checkText(text: string, where: string, src: EngineSource): string[] {
-    let pieces: Piece[];
+    let nodes: Node[];
     try {
-        pieces = scanPattern(text);
+        nodes = parsePattern(text);
     } catch (e) {
         return [`${where}: ${e instanceof Error ? e.message : String(e)}`];
     }
+    return checkNodes(nodes, where, src);
+}
+
+function checkNodes(nodes: Node[], where: string, src: EngineSource): string[] {
     const problems: string[] = [];
-    for (const p of pieces) if (p.isExpr) problems.push(...checkExpr(p.text.trim(), where, src));
+    for (const n of nodes) {
+        if (n.t === "text") continue;
+        if (n.t === "expr") problems.push(...checkExpr(n.piece.text.trim(), where, src));
+        else if (n.t === "if") {
+            for (const b of n.branches) problems.push(...checkCond(b.cond, where, src), ...checkNodes(b.body, where, src));
+            problems.push(...checkNodes(n.otherwise ?? [], where, src));
+        } else if (n.t === "each") {
+            if (!hasList(src, n.list)) problems.push(`${where} uses {#each ${n.list.trim()}}, but there is no list "## ${n.list.trim()}"`);
+            problems.push(...checkNodes(n.body, where, src), ...checkNodes(n.otherwise ?? [], where, src));
+        } else {
+            problems.push(...checkCount(n.count, where, src), ...checkNodes(n.body, where, src));
+        }
+    }
+    return problems;
+}
+
+function checkCount(c: string, where: string, src: EngineSource): string[] {
+    if (isNumeric(c)) return [];
+    if (c.includes("{")) return checkText(c, where, src);
+    const look = /^(.+?)\s*:\s*(.+)$/s.exec(c);
+    if (look && hasList(src, look[1])) return [];
+    return [`${where}: "${c}" isn't a count (use a number, dice, a range or a $name)`];
+}
+
+function checkCond(c: string, where: string, src: EngineSource): string[] {
+    const problems: string[] = [];
+    if (!c.trim()) return [`${where} has a condition with nothing in it`];
+    for (const o of splitTopWord(c, "or")) {
+        for (let a of splitTopWord(o, "and")) {
+            a = a.trim().replace(/^(not\s+)+/i, "");
+            if (!a) { problems.push(`${where} has "and", "or" or "not" with nothing next to it in "${c}"`); continue; }
+            const cmp = findCompare(a);
+            const sides = cmp ? [a.slice(0, cmp.i).trim(), a.slice(cmp.i + cmp.op.length).trim()] : [a];
+            if (sides.some((x) => !x)) problems.push(`${where}: the comparison "${a}" is missing a side`);
+            for (const x of sides) if (x.includes("{") && !/^"[\s\S]*"$/.test(x)) problems.push(...checkText(x, where, src));
+        }
+    }
     return problems;
 }
 
@@ -692,7 +1131,24 @@ function checkExpr(e: string, where: string, src: EngineSource): string[] {
     if (!e) return [`${where} has an empty {}`];
     if (e.toLowerCase() === "again" || VAR_RE.test(e) || isNumeric(e) || e.startsWith("@")) return [];
     const assign = ASSIGN_RE.exec(e);
-    if (assign) return assign[2] === "=" && !isNumeric(assign[3]) ? checkExpr(assign[3].trim(), where, src) : [];
+    if (assign) return assign[2] === "=" && !isNumeric(assign[3]) && !/^"[\s\S]*"$/.test(assign[3].trim()) ? checkExpr(assign[3].trim(), where, src) : [];
+    const kw = KEYWORD_RE.exec(e);
+    if (kw) {
+        const word = kw[1].toLowerCase();
+        const rest = kw[2];
+        if (word === "if") {
+            const parts = splitIf(rest);
+            if (!parts) return [`${where}: {${e}} needs a ":" after the condition, like {if $wealth > 60: rich | poor}`];
+            return [...checkCond(parts.cond, where, src), ...checkText(parts.then, where, src), ...checkText(parts.otherwise, where, src)];
+        }
+        const [head, body] = splitHead(rest);
+        if (word === "repeat") {
+            if (body === null) return [`${where}: {${e}} needs a ":" after the count, like {repeat 1d4: {Item}}`];
+            return [...checkCount(head, where, src), ...checkText(body, where, src)];
+        }
+        const problems = hasList(src, head) ? [] : [`${where} uses {each ${head}}, but there is no list "## ${head}"`];
+        return body === null ? problems : [...problems, ...checkText(body, where, src)];
+    }
     const rep = /^(.+?)\s+x\s+(.+)$/is.exec(e);
     if (rep) {
         const left = rep[1].trim();
@@ -700,17 +1156,20 @@ function checkExpr(e: string, where: string, src: EngineSource): string[] {
         if (isNumeric(left) || (look && hasList(src, look[1]))) return checkExpr(rep[2].trim(), where, src);
     }
     if (hasList(src, e)) return [];
+    const art = articleParts(e, (n) => hasList(src, n));
+    if (art) return checkExpr(art[1], where, src);
     const side = /^(.+?)\.meaning$/i.exec(e);
     if (side && hasList(src, side[1])) {
         return src.listInfo.get(side[1].trim().toLowerCase())?.kind === "meanings" ? [] : [`${where} uses {${e}}, but "## ${side[1].trim()}" isn't a meaning list (add "(meanings)" to its heading)`];
     }
     const look = /^(.+?)\s*:\s*(.+)$/s.exec(e);
-    if (look && hasList(src, look[1])) return [];
+    if (look && hasList(src, look[1])) return look[2].includes("{") ? checkText(look[2], where, src) : [];
     const withDie = /^(.+?)\s+with\s+d\d+/is.exec(e);
     if (withDie && hasList(src, withDie[1])) return [];
     for (let i = e.length - 1; i > 0; i--) {
         if ((e[i] === "+" || e[i] === "-") && hasList(src, e.slice(0, i)) && isNumeric(e.slice(i + 1))) return [];
     }
+    if (e.includes("{")) return checkText(e, where, src);
     const parts = e.split("|").map((x) => x.trim()).filter(Boolean);
     return parts.filter((part) => !hasList(src, part)).map((part) => `${where} uses {${part}}, but there is no list "## ${part}"`);
 }
