@@ -6,15 +6,24 @@ import { DEFAULT_SETTINGS } from "settings/DefaultSetting";
 import { SettingTab } from "settings/SettingsTab";
 import { clonePlain, mergeSettings } from "settings/settingsData";
 import { describeBuiltIn, groupOfKey, inlineGenerators, isAlias, replacementFor, RETIRED, RETIRED_KEYS, retiredMessage } from "generators/registry";
-import { runCustom } from "generators/custom";
+import { runCustomData } from "generators/custom";
+import { toValues, Value } from "generators/engine";
 import { CustomGeneratorStore } from "custom/store";
 import { StarterModal } from "editor/StarterModal";
 import { STARTERS, StarterKit } from "generators/starters";
 
 /** What other plugins (for example Templater) can call: app.plugins.plugins["fantasy-content-generator"].api */
 export interface FantasyGeneratorApi {
-	/** One result from any generator key that works inline (built-in or custom). Throws on an unknown key. */
-	generate(key: string): string;
+	/**
+	 * One result from any generator key that works inline (built-in or custom). Throws on an unknown key.
+	 * @param values passed in, like {@Key $wealth=70}: `{ wealth: 70, race: "Dwarf" }` (custom generators use them)
+	 */
+	generate(key: string, values?: Record<string, string | number>): string;
+	/**
+	 * The result and everything the generator remembered ($names, including the values passed in),
+	 * e.g. `{ text: "…", values: { wealth: 70, owner: "…" } }`, so a script can name and link notes.
+	 */
+	generateData(key: string, values?: Record<string, string | number>): { text: string; values: Record<string, string | number> };
 	/** Every key, built-in first, then custom. */
 	keys(): string[];
 }
@@ -33,7 +42,11 @@ export default class FantasyPlugin extends Plugin {
 		this.customs = new CustomGeneratorStore(this);
 		this.customs.watch();
 		this.api = {
-			generate: (key: string) => this.generate(key),
+			generate: (key: string, values?: Record<string, string | number>) => this.generateData(key, 0, toValues(values)).text,
+			generateData: (key: string, values?: Record<string, string | number>) => {
+				const r = this.generateData(key, 0, toValues(values));
+				return { text: r.text, values: Object.fromEntries(r.values) };
+			},
 			keys: () => this.inlineKeys(),
 		};
 
@@ -119,11 +132,16 @@ export default class FantasyPlugin extends Plugin {
 	 * One result for an inline key. Throws with a readable message.
 	 * @param depth how deeply generators are calling each other ({@Key} in a note); 0 from outside
 	 */
-	generate(key: string, depth = 0): string {
+	generate(key: string, depth = 0, values?: Map<string, Value>): string {
+		return this.generateData(key, depth, values).text;
+	}
+
+	/** A result and the values it remembered. Built-in generators ignore values passed in (and give them back). */
+	generateData(key: string, depth = 0, values: Map<string, Value> = new Map()): { text: string; values: Map<string, Value> } {
 		const builtIn = this.builtIns[key];
-		if (builtIn) return builtIn(this.settings);
+		if (builtIn) return { text: builtIn(this.settings), values: new Map(values) };
 		const custom = this.customs.active.get(key);
-		if (custom) return runCustom(custom, { call: (k, d) => this.generate(this.matchKey(k), d) }, depth);
+		if (custom) return runCustomData(custom, { call: (k, d, v) => this.generate(this.matchKey(k), d, v) }, depth, { values });
 		if (RETIRED_KEYS.includes(key)) throw new Error(retiredMessage(key, this.settings.inlineCallout || "@"));
 		throw new Error(`There is no generator called "${key}".`);
 	}

@@ -9,7 +9,7 @@
    `## Size (d20)` makes a ranged list (`- 1-2: text`); `## Elf (learn)` a sample list;
    `## Land (meanings)` a meaning list (`- nönd = stone`).
    Patterns (in the properties and inside rows) are evaluated by the note engine (generators/engine.ts). */
-import { Evaluator, EngineHost, ListInfo, ListRow, WeightedEntry, checkText, parseHeading, parseKeyedRow, parseMeaningRow, parseRangedRow, rangedProblems } from "generators/engine";
+import { Evaluator, EngineHost, Value, ListInfo, ListRow, WeightedEntry, checkText, parseHeading, parseKeyedRow, parseMeaningRow, parseRangedRow, rangedProblems } from "generators/engine";
 
 export type { WeightedEntry, ListRow, ListInfo } from "generators/engine";
 
@@ -226,15 +226,27 @@ export function usesMeanings(gen: CustomGenerator): boolean {
  * @param depth how deeply generator calls are nested already
  * @param opts  meanings: add what the name means in brackets, e.g. "Durak Nöndtrind (stone-helmet)"
  */
-export function runCustom(gen: CustomGenerator, host: EngineHost = {}, depth = 0, opts: { meanings?: boolean } = {}): string {
+export function runCustom(gen: CustomGenerator, host: EngineHost = {}, depth = 0, opts: RunOptions = {}): string {
+    return runCustomData(gen, host, depth, opts).text;
+}
+
+export interface RunOptions {
+    /** Add what the name means in brackets (default: the generator's own setting) */
+    meanings?: boolean;
+    /** Values passed in: the pattern starts with them ({@Key $wealth=80}, or the API) */
+    values?: Map<string, Value>;
+}
+
+/** One result and everything the pattern remembered ($names, including values passed in). */
+export function runCustomData(gen: CustomGenerator, host: EngineHost = {}, depth = 0, opts: RunOptions = {}): { text: string; values: Map<string, Value> } {
     if (!gen.patterns.length) throw new Error(`${gen.name} has no lists to pick from.`);
     const pattern = gen.patterns[Math.floor(Math.random() * gen.patterns.length)];
-    const ev = new Evaluator({ name: gen.name, lists: gen.lists, listNames: gen.listNames, listInfo: gen.listInfo }, host, depth);
+    const ev = new Evaluator({ name: gen.name, lists: gen.lists, listNames: gen.listNames, listInfo: gen.listInfo }, host, depth, opts.values);
     let text = ev.run(pattern);
     if (gen.capitalizeWords) text = text.replace(/(^|\s)(\p{Ll})/gu, (_m, pre: string, c: string) => pre + c.toUpperCase());
     else if (gen.capitalize) text = text.charAt(0).toUpperCase() + text.slice(1);
     const meaning = (opts.meanings ?? gen.withMeanings) ? ev.translation() : "";
-    return meaning ? `${text} (${meaning})` : text;
+    return { text: meaning ? `${text} (${meaning})` : text, values: ev.values() };
 }
 
 /** Starter note for the New generator command (structure only; the words are placeholders). */
@@ -280,6 +292,7 @@ Mood: {Mood}
 - \`{1d6}\`, \`{2d6+1}\`, \`{1-4}\` roll dice or a range. \`{2 x Item}\` gives two different items.
 - A heading like \`## Mood (d6)\` makes a table: each row starts with the numbers it covers.
 - \`{@Key}\` puts another generator's result here, built-in or yours (for example \`{@Drinks}\`).
+- \`{@Key $wealth=$wealth}\` passes values into another generator; inside it, \`{$wealth ?= 1d100}\` uses the passed value or rolls one when none was passed.
 - \`{$gold = 2d6}\` remembers a number or result; \`{$gold}\` prints it; \`{$gold += 1}\` changes it; \`{Mood + $gold}\` rolls a table with a modifier.
 - Everything else in the note (like this text) is ignored. See the plugin's README for the full list.
 

@@ -62,9 +62,15 @@ export interface EngineSource {
     listInfo: Map<string, ListInfo>;
 }
 
-/** Lets the engine run other generators ({@Key}). `depth` is how deeply calls are nested. */
+/** A remembered value: a number or text. */
+export type Value = number | string;
+
+/**
+ * Lets the engine run other generators ({@Key}). `depth` is how deeply calls are nested;
+ * `values` are the ones passed in ({@Tavern $wealth=$wealth}), which the called generator starts with.
+ */
 export interface EngineHost {
-    call?: (key: string, depth: number) => string;
+    call?: (key: string, depth: number, values?: Map<string, Value>) => string;
 }
 
 export const MAX_DEPTH = 10;
@@ -72,7 +78,8 @@ export const MAX_REPEAT = 100;
 const MAX_STEPS = 20000;
 const NAME = String.raw`[\p{L}\p{N}_]+`;
 const VAR_RE = new RegExp(String.raw`^\$(${NAME})$`, "u");
-const ASSIGN_RE = new RegExp(String.raw`^\$(${NAME})\s*(\+=|-=|=)\s*(.+)$`, "su");
+const ASSIGN_RE = new RegExp(String.raw`^\$(${NAME})\s*(\+=|-=|\?=|=)\s*(.+)$`, "su");
+const NAME_RE = new RegExp(String.raw`^${NAME}$`, "u");
 const TERM_RE = new RegExp(String.raw`^(\d+d\d+|d\d+|\d+-\d+|\d+|\$${NAME})`, "u");
 
 /* ---------------- headings and rows ---------------- */
@@ -393,6 +400,64 @@ export function article(text: string): "a" | "an" {
     return /^[aeiou]/.test(w) ? "an" : "a";
 }
 
+/* ---------------- calls ---------------- */
+
+/**
+ * "Tavern $wealth=$wealth $name=\"Old Bell\"" -> {key, args}; a message string when it's malformed.
+ * Values: "quoted text" (spaces allowed), or anything up to the next space outside {braces}.
+ */
+export function parseCall(body: string): { key: string; args: { name: string; raw: string }[] } | string {
+    const s = body.trim();
+    const keyEnd = s.search(/\s/);
+    const key = keyEnd < 0 ? s : s.slice(0, keyEnd);
+    if (!key) return "{@} needs a generator name, like {@Drinks}";
+    const args: { name: string; raw: string }[] = [];
+    let i = keyEnd < 0 ? s.length : keyEnd;
+    const example = `like {@${key} $wealth=80}`;
+    const argRe = new RegExp(String.raw`^\$(${NAME})=`, "u");
+    while (i < s.length) {
+        while (i < s.length && /\s/.test(s[i])) i++;
+        if (i >= s.length) break;
+        const m = argRe.exec(s.slice(i));
+        if (!m) {
+            const word = s.slice(i).split(/\s/)[0];
+            if (/^\$[\p{L}\p{N}_]+=?$/u.test(word) && /^\$[\p{L}\p{N}_]+\s*=/u.test(s.slice(i))) return `{@${s}}: write values with no spaces around "=", ${example}`;
+            return `{@${s}}: "${word}" isn't a value to pass. Write values as $name=value, ${example}`;
+        }
+        i += m[0].length;
+        let end: number;
+        if (s[i] === '"') {
+            end = s.indexOf('"', i + 1);
+            if (end < 0) return `{@${s}}: a quote (") isn't closed`;
+            end++;
+        } else {
+            end = scanTop(s, i, false, (j) => /\s/.test(s[j]));
+            if (end < 0) end = s.length;
+        }
+        const raw = s.slice(i, end);
+        if (!raw || /^\s/.test(raw)) return `{@${s}}: write values with no spaces around "=", ${example}`;
+        args.push({ name: m[1], raw });
+        i = end;
+    }
+    return { key, args };
+}
+
+/** Values given from outside (the API): names with or without "$"; numbers stay numbers, everything else becomes text. */
+export function toValues(values: Record<string, unknown> | undefined): Map<string, Value> {
+    const out = new Map<string, Value>();
+    if (!values) return out;
+    for (const [k, v] of Object.entries(values)) {
+        const name = k.replace(/^\$/, "");
+        if (!NAME_RE.test(name)) throw new Error(`"${k}" can't be a value name (letters, numbers and _ only)`);
+        if (v === undefined || v === null) continue;
+        if (typeof v === "number" && Number.isFinite(v)) out.set(name, v);
+        else if (typeof v === "boolean") out.set(name, v ? 1 : 0);
+        else if (typeof v === "string") out.set(name, v);
+        else throw new Error(`the value for "${k}" must be text or a number`);
+    }
+    return out;
+}
+
 /* ---------------- number expressions ---------------- */
 
 type NumNode = { k: "term"; t: string } | { k: "neg"; a: NumNode } | { k: "op"; op: string; a: NumNode; b: NumNode };
@@ -556,7 +621,6 @@ interface Ctx {
     again: number;
 }
 
-type Value = number | string;
 
 const MODELS = new WeakMap<ListRow[], NameModel>();
 
@@ -574,7 +638,15 @@ export class Evaluator {
     /** Meanings picked so far, with null for each break between words */
     private readonly meaningLog: (string | null)[] = [];
 
-    constructor(private readonly src: EngineSource, private readonly host: EngineHost = {}, private readonly depth = 0) {}
+    /** @param start values passed in by the caller ({@Key $x=1} or the API); the pattern starts with them */
+    constructor(private readonly src: EngineSource, private readonly host: EngineHost = {}, private readonly depth = 0, start?: Map<string, Value>) {
+        if (start) for (const [k, v] of start) this.vars.set(k, v);
+    }
+
+    /** Everything the last run remembered ($names), including values passed in. */
+    values(): Map<string, Value> {
+        return new Map(this.vars);
+    }
 
     /** Evaluate a whole pattern. */
     run(pattern: string): string {
@@ -738,7 +810,8 @@ export class Evaluator {
         const assign = ASSIGN_RE.exec(e);
         if (assign) {
             const [, name, op, rhs] = assign;
-            if (op === "=") {
+            if (op === "?=" && this.vars.has(name)) return ""; // passed in (or set before): keep it, don't roll the fallback
+            if (op === "=" || op === "?=") {
                 const quoted = /^"([\s\S]*)"$/.exec(rhs.trim());
                 this.vars.set(name, quoted ? quoted[1] : isNumeric(rhs) ? this.number(rhs) : this.expr(rhs.trim(), ctx, { text: rhs, isExpr: true }));
             } else {
@@ -768,6 +841,7 @@ export class Evaluator {
             const a = article(text);
             return `${art[0].charAt(0) === "A" ? a.charAt(0).toUpperCase() + a.slice(1) : a} ${text}`;
         }
+        if (e.startsWith("@")) return this.call(e.slice(1).trim(), ctx);
         if (e.includes("{") && this.findList(e) === undefined && !/^[^{]*:/.test(e)) return this.pattern(e, ctx).trim();
         if (BARE_KEYWORD_RE.test(e) && this.findList(e) === undefined && !this.lookupList(e)) this.fail(`{${e}}: logic starts with "#", like {#${e}}`);
         return this.value(e, ctx);
@@ -862,7 +936,7 @@ export class Evaluator {
 
     /** Lists, lookups, modified rolls and calls: anything that gives text. */
     private value(e: string, ctx: Ctx): string {
-        if (e.startsWith("@")) return this.call(e.slice(1).trim());
+        if (e.startsWith("@")) return this.call(e.slice(1).trim(), ctx);
 
         const whole = this.findList(e);
         if (whole !== undefined) return this.pick(whole, ctx, {});
@@ -918,11 +992,30 @@ export class Evaluator {
         return this.src.listNames.get(id) ?? id;
     }
 
-    private call(key: string): string {
-        if (!key) this.fail("{@} needs a generator name, like {@Drinks}");
+    /** {@Key} or {@Key $a=1 $b=$b $c="some text"}: run another generator, passing values in. */
+    private call(body: string, ctx: Ctx): string {
+        const parsed = parseCall(body);
+        if (typeof parsed === "string") this.fail(parsed);
+        const { key, args } = parsed;
         if (!this.host.call) this.fail(`{@${key}} can't run here`);
         if (this.depth + 1 > MAX_DEPTH) this.fail(`generators call each other more than ${MAX_DEPTH} deep (one may be calling itself)`);
-        return this.host.call(key, this.depth + 1);
+        const values = new Map<string, Value>();
+        for (const a of args) {
+            const v = this.argValue(a.raw, ctx);
+            if (v !== undefined) values.set(a.name, v); // an unset $name isn't passed, so the callee's ?= fallback runs
+        }
+        return this.host.call(key, this.depth + 1, values);
+    }
+
+    /** A value passed in a call: "quoted text", $name (undefined when unset), {a pattern}, numbers and dice (rolled here), or a word. */
+    private argValue(raw: string, ctx: Ctx): Value | undefined {
+        const q = /^"([\s\S]*)"$/.exec(raw);
+        if (q) return q[1];
+        const v = VAR_RE.exec(raw);
+        if (v) return this.vars.get(v[1]);
+        if (raw.includes("{")) return this.pattern(raw, ctx).trim();
+        if (isNumeric(raw)) return this.number(raw);
+        return raw;
     }
 
     /** Pick one row from a list and evaluate it. */
@@ -1146,9 +1239,14 @@ function hasList(src: EngineSource, name: string): boolean {
 
 function checkExpr(e: string, where: string, src: EngineSource): string[] {
     if (!e) return [`${where} has an empty {}`];
-    if (e.toLowerCase() === "again" || VAR_RE.test(e) || isNumeric(e) || e.startsWith("@")) return [];
+    if (e.toLowerCase() === "again" || VAR_RE.test(e) || isNumeric(e)) return [];
+    if (e.startsWith("@")) {
+        const parsed = parseCall(e.slice(1));
+        if (typeof parsed === "string") return [`${where}: ${parsed}`];
+        return parsed.args.flatMap((a) => (a.raw.includes("{") && !a.raw.startsWith('"') ? checkText(a.raw, where, src) : []));
+    }
     const assign = ASSIGN_RE.exec(e);
-    if (assign) return assign[2] === "=" && !isNumeric(assign[3]) && !/^"[\s\S]*"$/.test(assign[3].trim()) ? checkExpr(assign[3].trim(), where, src) : [];
+    if (assign) return assign[2] !== "+=" && assign[2] !== "-=" && !isNumeric(assign[3]) && !/^"[\s\S]*"$/.test(assign[3].trim()) ? checkExpr(assign[3].trim(), where, src) : [];
     const kw = KEYWORD_RE.exec(e);
     if (kw) {
         const word = kw[1].toLowerCase();
