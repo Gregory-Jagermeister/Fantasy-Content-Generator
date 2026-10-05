@@ -71,6 +71,11 @@ export default class FantasyPlugin extends Plugin {
 			name: "Add a starter set",
 			callback: () => this.openStarters(),
 		});
+		this.addCommand({
+			id: "add-village-example",
+			name: "Add the village example",
+			callback: () => { void this.addVillageExample(); },
+		});
 		this.registerView(VIEW_TYPE_GENERATOR, (leaf) => new GeneratorView(leaf, this));
 		this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
 			if (leaf?.view instanceof MarkdownView) this.lastEditorLeaf = leaf;
@@ -254,6 +259,19 @@ export default class FantasyPlugin extends Plugin {
 		} catch (e) {
 			console.error("Fantasy Content Generator: couldn't add the starter sets", e);
 			new Notice(`Added ${added}, then couldn't add the rest: ${e instanceof Error ? e.message : String(e)}`);
+		}
+	}
+
+	/** Add the village example (part generators and the how-to note) and open the how-to note. */
+	async addVillageExample(): Promise<void> {
+		try {
+			const { added, kept, folder } = await this.customs.addVillageExample();
+			const script = this.app.vault.getFileByPath(`${folder}/Build a village (how to).md`);
+			if (script) await this.app.workspace.getLeaf(false).openFile(script);
+			new Notice(`Village example: added ${added} note${added === 1 ? "" : "s"}${kept ? ` (${kept} already there, kept as they were)` : ""}. See "Build a village (how to)".`);
+		} catch (e) {
+			console.error("Fantasy Content Generator: couldn't add the village example", e);
+			new Notice(`Couldn't add the village example: ${e instanceof Error ? e.message : String(e)}`);
 		}
 	}
 

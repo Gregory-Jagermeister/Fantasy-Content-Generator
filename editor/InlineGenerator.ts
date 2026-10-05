@@ -2,6 +2,7 @@ import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, Edito
 import type FantasyPlugin from "main";
 import { rankKeys } from "generators/custom";
 import { retiredMessage } from "generators/registry";
+import { keyMode, keyText } from "editor/keyMode";
 
 /** The @ list's "Add a starter set" choice, offered while no starter sets are added (1.6.0, H1). */
 export const ADD_STARTER = "\u0000add-starter";
@@ -34,6 +35,7 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
      * second line contains it ("tavern" finds InnsTaverns). Retired keys only show when typed in full.
      */
     getSuggestions(context: EditorSuggestContext): string[] {
+        this.mode = this.modeAt(context.editor, context.start);
         const keys = this.plugin.suggestKeys();
         const ranked = rankKeys(keys, context.query);
         const q = context.query.toLowerCase();
@@ -44,8 +46,19 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
         const retired = this.plugin.retiredMatch(context.query);
         const out = retired ? [retired, ...ranked] : ranked;
         // No name generators yet: offer to add one (when nothing typed, when the words match, or when nothing else does).
-        if (!this.plugin.hasStarterSets() && (!q || ADD_STARTER_WORDS.includes(q) || !out.length)) out.push(ADD_STARTER);
+        if (!this.mode && !this.plugin.hasStarterSets() && (!q || ADD_STARTER_WORDS.includes(q) || !out.length)) out.push(ADD_STARTER);
         return out;
+    }
+
+    /** Writing a pattern? Then picking writes the key, not a result (see editor/keyMode.ts). */
+    private mode: "brace" | "block" | null = null;
+
+    private modeAt(editor: Editor, start: EditorPosition): "brace" | "block" | null {
+        const before = editor.getLine(start.line).slice(0, start.ch);
+        if (before.endsWith("{")) return "brace";
+        const above: string[] = [];
+        for (let i = 0; i < start.line; i++) above.push(editor.getLine(i));
+        return keyMode(before, above);
     }
 
     renderSuggestion(value: string, el: HTMLElement): void {
@@ -56,7 +69,9 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
         }
         el.createDiv({ text: value });
         const note = this.plugin.describeKey(value);
-        if (note) el.createDiv({ text: note, cls: "fcg-suggestion-note" });
+        const writes = this.mode ? `Writes ${keyText(value, this.mode)}` : "";
+        const line = [note, writes].filter(Boolean).join(" · ");
+        if (line) el.createDiv({ text: line, cls: "fcg-suggestion-note" });
     }
 
     selectSuggestion(value: string): void {
@@ -77,6 +92,13 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
         }
         if (this.plugin.isRetired(value)) {
             new Notice(retiredMessage(value, trigger));
+            return;
+        }
+        const mode = this.modeAt(editor, start);
+        if (mode) {
+            const key = keyText(value, mode);
+            editor.replaceRange(key, start, end);
+            editor.setCursor(editor.offsetToPos(editor.posToOffset(start) + key.length));
             return;
         }
         let text: string;

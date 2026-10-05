@@ -2,7 +2,8 @@ import { normalizePath, TAbstractFile, TFile, TFolder } from "obsidian";
 import type FantasyPlugin from "main";
 import { copyNote } from "generators/copies";
 import { CustomGenerator, EXAMPLE_NAMING_KIT, EXAMPLE_NOTE, parseGeneratorNote, resolveCustom, starterNote } from "generators/custom";
-import type { StarterKit } from "generators/starters";
+import { STARTERS, StarterKit } from "generators/starters";
+import { VILLAGE_FOLDER, VILLAGE_NOTES, VILLAGE_STARTERS } from "generators/villageExample";
 import { starterTitle } from "generators/starterChoices";
 
 /** Keeps the custom generators from the generator folder up to date. */
@@ -117,6 +118,33 @@ export class CustomGeneratorStore {
         if (existing instanceof TFile) return { file: existing, existed: true };
         if (existing) throw new Error(`${path} exists and isn't a note`);
         return { file: await vault.create(path, kit.note), existed: false };
+    }
+
+    /**
+     * Write the village example (three part generators and the how-to note) into
+     * "<generator folder>/Village example", plus the starter sets its Owner uses. Never overwrites.
+     * @returns how many notes were added and how many were already there
+     */
+    async addVillageExample(): Promise<{ added: number; kept: number; folder: string }> {
+        const { vault } = this.plugin.app;
+        const root = await this.ensureFolder();
+        const folder = normalizePath(`${root}/${VILLAGE_FOLDER}`);
+        if (!vault.getAbstractFileByPath(folder)) await vault.createFolder(folder);
+        let added = 0;
+        let kept = 0;
+        for (const note of VILLAGE_NOTES) {
+            const path = normalizePath(`${folder}/${note.file}`);
+            if (vault.getAbstractFileByPath(path)) { kept++; continue; }
+            await vault.create(path, note.text);
+            added++;
+        }
+        for (const key of VILLAGE_STARTERS) {
+            const kit = STARTERS.find((k) => k.key === key);
+            if (!kit) continue;
+            const { existed } = await this.addStarter(kit);
+            if (existed) kept++; else added++;
+        }
+        return { added, kept, folder };
     }
 
     /**
