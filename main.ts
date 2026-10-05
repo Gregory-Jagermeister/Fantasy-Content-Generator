@@ -1,11 +1,13 @@
-import { Notice, Plugin } from "obsidian";
-import { GeneratorModal } from "editor/GeneratorModal";
+import { MarkdownView, Notice, Plugin, WorkspaceLeaf } from "obsidian";
+import { GeneratorView, PanelState, VIEW_TYPE_GENERATOR, noNoteNotice } from "editor/GeneratorView";
+import { PanelEntry, buildEntries, insertionText } from "editor/panelModel";
+import { starterChoices } from "generators/starterChoices";
 import { InlineGeneratorSuggester } from "editor/InlineGenerator";
 import { FantasyPluginSettings } from "settings/Datatypes";
 import { DEFAULT_SETTINGS } from "settings/DefaultSetting";
 import { SettingTab } from "settings/SettingsTab";
 import { clonePlain, mergeSettings } from "settings/settingsData";
-import { describeBuiltIn, groupOfKey, inlineGenerators, isAlias, replacementFor, RETIRED, RETIRED_KEYS, retiredMessage } from "generators/registry";
+import { describeBuiltIn, GENERATORS, groupOfKey, inlineGenerators, isAlias, replacementFor, RETIRED, RETIRED_KEYS, retiredMessage } from "generators/registry";
 import { runCustomData } from "generators/custom";
 import { toValues, Value } from "generators/engine";
 import { CustomGeneratorStore } from "custom/store";
@@ -32,8 +34,12 @@ export default class FantasyPlugin extends Plugin {
 	settings: FantasyPluginSettings;
 	customs: CustomGeneratorStore;
 	api: FantasyGeneratorApi;
-	/** The generator window remembers the last amount used this session (starts at the Default amount setting). */
+	/** The generator panel remembers the last amount used this session (starts at the Default amount setting). */
 	lastAmount: number | null = null;
+	/** What the generator panel shows; kept here so results survive closing and reopening the panel. */
+	panelState: PanelState = { key: "", results: [], meanings: false, keep: false };
+	/** The last note being edited, where the panel's Insert goes (a Markdown leaf, not one of this plugin's views). */
+	private lastEditorLeaf: WorkspaceLeaf | null = null;
 	private builtIns = inlineGenerators();
 	private groups = groupOfKey();
 
@@ -53,7 +59,7 @@ export default class FantasyPlugin extends Plugin {
 		this.addCommand({
 			id: "open-fantasy-generator",
 			name: "Open generator",
-			callback: () => this.openGenerator(),
+			callback: () => { void this.openGenerator(); },
 		});
 		this.addCommand({
 			id: "new-generator",
@@ -65,7 +71,11 @@ export default class FantasyPlugin extends Plugin {
 			name: "Add a starter set",
 			callback: () => this.openStarters(),
 		});
-		this.addRibbonIcon("book", "Open fantasy generator", () => this.openGenerator());
+		this.registerView(VIEW_TYPE_GENERATOR, (leaf) => new GeneratorView(leaf, this));
+		this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
+			if (leaf?.view instanceof MarkdownView) this.lastEditorLeaf = leaf;
+		}));
+		this.addRibbonIcon("dices", "Open generator", () => { void this.openGenerator(); });
 		this.registerEditorSuggest(new InlineGeneratorSuggester(this.app, this));
 		this.addSettingTab(new SettingTab(this.app, this));
 	}
@@ -159,9 +169,49 @@ export default class FantasyPlugin extends Plugin {
 		}
 	}
 
-	/** Open the generator window; copied results go to the clipboard. */
-	openGenerator(): void {
-		new GeneratorModal(this.app, this, (text) => { void this.copyToClipboard(text); }).open();
+	/** Open the generator panel in the right sidebar, or show it if it's open already. */
+	async openGenerator(): Promise<void> {
+		const { workspace } = this.app;
+		let leaf: WorkspaceLeaf | null = workspace.getLeavesOfType(VIEW_TYPE_GENERATOR)[0] ?? null;
+		if (!leaf) {
+			leaf = workspace.getRightLeaf(false);
+			if (!leaf) return;
+			await leaf.setViewState({ type: VIEW_TYPE_GENERATOR, active: true });
+		}
+		await workspace.revealLeaf(leaf);
+	}
+
+	/** Redraw open generator panels (after generator notes change). */
+	refreshPanels(): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_GENERATOR)) {
+			if (leaf.view instanceof GeneratorView) leaf.view.render();
+		}
+	}
+
+	/** What the panel's picker offers: built-ins (not hidden), starter sets, custom generators. */
+	panelEntries(): PanelEntry[] {
+		const races = new Map(starterChoices().filter((c) => c.kit).map((c) => [c.kit?.key ?? "", c.detail]));
+		return buildEntries({
+			builtIns: GENERATORS.filter((g) => !this.isGroupHidden(g.group)).map((g) => ({ key: g.key, label: g.label, group: g.group })),
+			customs: [...this.customs.active.values()],
+			isStarter: (k) => this.isStarterKey(k),
+			racesOf: (k) => races.get(k) ?? "",
+		});
+	}
+
+	/** Put text at the cursor of the last note being edited: names inside the sentence, blocks on their own lines. */
+	insertIntoNote(text: string): void {
+		const recent = this.app.workspace.getMostRecentLeaf();
+		const leaf = this.lastEditorLeaf ?? (recent?.view instanceof MarkdownView ? recent : null);
+		const view = leaf && this.app.workspace.getLeavesOfType("markdown").includes(leaf) && leaf.view instanceof MarkdownView ? leaf.view : null;
+		if (!view) { noNoteNotice(); return; }
+		const editor = view.editor;
+		const cursor = editor.getCursor();
+		const line = editor.getLine(cursor.line);
+		const above = cursor.line > 0 ? editor.getLine(cursor.line - 1) : "";
+		const insert = insertionText(text, line.slice(0, cursor.ch), above, line.slice(cursor.ch));
+		editor.replaceRange(insert, cursor);
+		editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + insert.length));
 	}
 
 	/** Pick a starter set (a naming kit for a race or language) to add to the generator folder. */

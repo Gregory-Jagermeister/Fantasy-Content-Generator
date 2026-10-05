@@ -203,5 +203,7 @@ export const DEFAULT_SETTINGS: FantasyPluginSettings = {
     generatorFolder: "Generators",
     defaultAmount: 1,
     settingsSection: "general",
-    hiddenGroups: []
+    hiddenGroups: [],
+    pinnedGenerators: [],
+    recentGenerators: []
 }

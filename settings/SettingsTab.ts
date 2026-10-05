@@ -122,7 +122,7 @@ export class SettingTab extends PluginSettingTab {
             }));
         new Setting(el)
             .setName("Default amount")
-            .setDesc("How many results the generator window makes at first. It then remembers the last amount you used until Obsidian restarts.")
+            .setDesc("How many results the generator panel makes at first. It then remembers the last amount you used until Obsidian restarts.")
             .addText((t) => {
                 t.inputEl.type = "number";
                 t.setValue(String(s.defaultAmount)).onChange((v) => {
@@ -134,7 +134,7 @@ export class SettingTab extends PluginSettingTab {
                     }
                 });
             });
-        new Setting(el).setName("Show groups").setDesc("Hidden groups leave the generator window and the inline list. Their generators still work when a note or template calls them.").setHeading();
+        new Setting(el).setName("Show groups").setDesc("Hidden groups leave the generator panel and the inline list. Their generators still work when a note or template calls them.").setHeading();
         for (const group of builtInGroups()) {
             new Setting(el).setName(group).addToggle((t) => t.setValue(!s.hiddenGroups.includes(group)).onChange((show) => {
                 s.hiddenGroups = show ? s.hiddenGroups.filter((g) => g !== group) : [...s.hiddenGroups, group];

@@ -1,4 +1,4 @@
-/* Fantasy Content Generator: settings lists and the generator window. Uses theme variables, so it suits light and dark themes. */
+/* Fantasy Content Generator: settings lists and the generator panel. Uses theme variables, so it suits light and dark themes. */
 
 .fcg-details {
     border: 1px solid var(--background-modifier-border);
@@ -23,10 +23,6 @@
     display: none;
 }
 
-.fcg-generator-select {
-    width: 100%;
-    margin-bottom: 1em;
-}
 
 /* Settings: section tabs (desktop) */
 .fcg-tabs {
@@ -52,4 +48,208 @@
 .fcg-suggestion-note {
     color: var(--text-muted);
     font-size: var(--font-ui-smaller);
+}
+
+/* Generator panel (1.6.0) */
+.fcg-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+
+.fcg-hidden {
+    display: none;
+}
+
+.fcg-panel-quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-1);
+}
+
+.fcg-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    font-size: var(--font-ui-small);
+    padding: var(--size-4-1) var(--size-4-2);
+    border-radius: var(--radius-l);
+}
+
+.fcg-chip.is-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.fcg-chip-icon {
+    display: inline-flex;
+    --icon-size: var(--icon-xs);
+}
+
+.fcg-panel-search {
+    width: 100%;
+}
+
+.fcg-suggest {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--size-4-2);
+}
+
+.fcg-suggest-group,
+.fcg-panel-chosen-group,
+.fcg-panel-count,
+.fcg-panel-hint {
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+}
+
+.fcg-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+
+.fcg-panel-chosen {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+
+.fcg-panel-chosen-name {
+    font-weight: var(--font-semibold);
+}
+
+.fcg-pin {
+    margin-left: auto;
+}
+
+.fcg-panel-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+
+.fcg-panel-amount {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    flex: 1;
+}
+
+.fcg-panel-amount input {
+    width: 5em;
+}
+
+.fcg-panel-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-4);
+}
+
+.fcg-panel-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    font-size: var(--font-ui-small);
+}
+
+.fcg-panel-results-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+
+.fcg-panel-count {
+    flex: 1;
+}
+
+.fcg-panel-results {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+}
+
+.fcg-result-line {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    padding: var(--size-4-1) var(--size-4-2);
+    border-radius: var(--radius-s);
+}
+
+.fcg-result-line:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.fcg-result-text {
+    flex: 1;
+    user-select: text;
+}
+
+.fcg-result-actions {
+    display: flex;
+    gap: var(--size-2-1);
+    flex-shrink: 0;
+}
+
+.fcg-result-block,
+.fcg-result-error {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background-color: var(--background-secondary);
+    padding: var(--size-4-2) var(--size-4-3);
+}
+
+.fcg-result-error {
+    border-color: var(--background-modifier-error);
+}
+
+.fcg-result-head {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--size-4-2);
+}
+
+.fcg-result-title {
+    flex: 1;
+    font-weight: var(--font-semibold);
+}
+
+.fcg-result-body {
+    user-select: text;
+    font-size: var(--font-ui-small);
+}
+
+.fcg-result-body > :first-child {
+    margin-top: var(--size-4-1);
+}
+
+.fcg-result-body > :last-child {
+    margin-bottom: 0;
+}
+
+.fcg-result-block.is-folded .fcg-result-body {
+    max-height: 6.5em;
+    overflow: hidden;
+}
+
+.fcg-result-more {
+    margin-top: var(--size-4-1);
+    font-size: var(--font-ui-smaller);
+}
+
+.fcg-panel-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: var(--size-4-3);
+}
+
+/* Phones: finger-sized buttons */
+.is-mobile .fcg-result-actions .clickable-icon,
+.is-mobile .fcg-pin {
+    min-width: 2.5em;
+    min-height: 2.5em;
 }

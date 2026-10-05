@@ -68,6 +68,7 @@ export class CustomGeneratorStore {
         }
         this.active = resolveCustom(gens, this.plugin.builtInKeys());
         this.all = gens.sort((a, b) => a.path.localeCompare(b.path));
+        this.plugin.refreshPanels();
     }
 
     /** The generator folder, created (with the example notes) if it doesn't exist yet. */

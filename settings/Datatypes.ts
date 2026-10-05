@@ -55,10 +55,14 @@ export interface FantasyPluginSettings {
     inlineCallout: string;
     /** Folder holding custom generator notes (subfolders included) */
     generatorFolder: string;
-    /** Amount the generator window starts with */
+    /** Amount the generator panel starts with */
     defaultAmount: number;
     /** Settings section shown last */
     settingsSection: string;
-    /** Built-in groups hidden from the generator window and the inline list */
+    /** Built-in groups hidden from the generator panel and the inline list */
     hiddenGroups: string[];
+    /** Generator keys pinned to the top of the generator panel, in the order pinned */
+    pinnedGenerators: string[];
+    /** Generator keys used recently in the panel, newest first */
+    recentGenerators: string[];
 }
