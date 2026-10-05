@@ -1,7 +1,7 @@
 import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, Notice } from "obsidian";
 import type FantasyPlugin from "main";
 import { rankKeys } from "generators/custom";
-import { RETIRED, retiredMessage } from "generators/registry";
+import { retiredMessage } from "generators/registry";
 
 /** Type the trigger (default "@") then a generator name, e.g. "@ElfFemale", and pick it to insert a result. */
 export class InlineGeneratorSuggester extends EditorSuggest<string> {
@@ -25,16 +25,26 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
         };
     }
 
-    /** Names that start with what was typed come first, then names that contain it. */
+    /**
+     * Keys that start with what was typed come first, then keys that contain it, then keys whose
+     * second line contains it ("tavern" finds InnsTaverns). Retired keys only show when typed in full.
+     */
     getSuggestions(context: EditorSuggestContext): string[] {
-        return rankKeys([...this.plugin.suggestKeys(), ...this.plugin.retiredKeys()], context.query);
+        const keys = this.plugin.suggestKeys();
+        const ranked = rankKeys(keys, context.query);
+        const q = context.query.toLowerCase();
+        if (q) {
+            const seen = new Set(ranked);
+            for (const k of keys) if (!seen.has(k) && this.plugin.describeKey(k).toLowerCase().includes(q)) ranked.push(k);
+        }
+        const retired = this.plugin.retiredMatch(context.query);
+        return retired ? [retired, ...ranked] : ranked;
     }
 
     renderSuggestion(value: string, el: HTMLElement): void {
         el.createDiv({ text: value });
-        const custom = this.plugin.customs.active.get(value);
-        if (custom) el.createDiv({ text: custom.name, cls: "fcg-suggestion-note" });
-        else if (this.plugin.isRetired(value)) el.createDiv({ text: `Retired in ${RETIRED[value]}`, cls: "fcg-suggestion-note" });
+        const note = this.plugin.describeKey(value);
+        if (note) el.createDiv({ text: note, cls: "fcg-suggestion-note" });
     }
 
     selectSuggestion(value: string): void {

@@ -6,7 +6,8 @@ export interface StarterChoice {
     label: string;
     /** Second line: the races it is for, e.g. "Elf, High elf, Dark elf, Drow" */
     detail: string;
-    kit: StarterKit;
+    /** The set to add; null for "Add all starter sets" */
+    kit: StarterKit | null;
 }
 
 /** The kit's generator name ("Elvish names"), which is also its note's file name. */
@@ -22,15 +23,17 @@ const LABELS: Record<string, { label: string; detail?: string }> = {
 };
 
 /**
- * One choice per starter set, sorted by label, with its races on the second line
+ * "Add all starter sets" first, then one choice per starter set, sorted by label, with its races on the second line
  * (Daniel, 2026-10-05: race names as titles confused). The search reads the second line too,
  * so typing "drow" still finds Elvish names.
  */
 export function starterChoices(kits: StarterKit[] = STARTERS): StarterChoice[] {
-    return kits
+    const sets = kits
         .map((kit) => {
             const custom = LABELS[kit.key];
             return { label: custom?.label ?? starterTitle(kit), detail: custom?.detail ?? kit.races.join(", "), kit };
         })
         .sort((a, b) => a.label.localeCompare(b.label));
+    // First: every set at once (Daniel, 2026-10-05), into the generator folder; notes already there are kept.
+    return [{ label: "Add all starter sets", detail: `All ${kits.length} sets; notes already in your folder are kept`, kit: null }, ...sets];
 }

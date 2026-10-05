@@ -1,6 +1,6 @@
 import { App, Modal, Notice, Setting } from "obsidian";
 import type FantasyPlugin from "main";
-import { GENERATORS, Gender, Generated, RACES, raceName } from "generators/registry";
+import { GENERATORS, Generated } from "generators/registry";
 import { COPYABLE } from "generators/copies";
 
 /** Most results generated in one go. */
@@ -17,8 +17,6 @@ export class GeneratorModal extends Modal {
     private readonly onCopy: (text: string) => void;
     private rows: Row[] = [];
     private amount = 1;
-    private gender: Gender = "male";
-    private withFamily = false;
 
     constructor(app: App, plugin: FantasyPlugin, onCopy: (text: string) => void) {
         super(app);
@@ -40,8 +38,9 @@ export class GeneratorModal extends Modal {
             return g;
         };
         for (const g of GENERATORS) if (!this.plugin.isGroupHidden(g.group)) group(g.group).createEl("option", { text: g.label, value: `gen:${g.key}` });
-        if (!this.plugin.isGroupHidden("Names")) for (const r of RACES) group("Names").createEl("option", { text: r.label, value: `race:${r.key}` });
-        for (const c of this.plugin.customs.active.values()) group("Custom").createEl("option", { text: c.name, value: `custom:${c.key}` });
+        for (const c of this.plugin.customs.active.values()) {
+            group(this.plugin.isStarterKey(c.key) ? "Starter sets" : "Custom").createEl("option", { text: c.name, value: `custom:${c.key}` });
+        }
 
         const optionsEl = contentEl.createDiv();
         select.addEventListener("change", () => this.showOptions(optionsEl, select.value));
@@ -55,27 +54,13 @@ export class GeneratorModal extends Modal {
 
         const kind = choice.slice(0, choice.indexOf(":"));
         const key = choice.slice(choice.indexOf(":") + 1);
-        const race = kind === "race" ? RACES.find((r) => r.key === key) : undefined;
         const gen = kind === "gen" ? GENERATORS.find((g) => g.key === key) : undefined;
         const custom = kind === "custom" ? this.plugin.customs.active.get(key) : undefined;
         const settings = this.plugin.settings;
         const plain = (text: string): Generated => ({ title: text.split("\n")[0], text });
-        const one: (() => Generated) | undefined = race
-            ? () => plain(raceName(race, this.gender, this.withFamily))
-            : gen ? () => gen.run(settings)
+        const one: (() => Generated) | undefined = gen ? () => gen.run(settings)
             : custom ? () => plain(this.plugin.generate(custom.key)) : undefined;
         if (!one) return;
-
-        if (race) {
-            new Setting(el).setName("Options").setHeading();
-            this.gender = "male";
-            this.withFamily = false;
-            new Setting(el).setName("Gender").addDropdown((d) => d
-                .addOption("male", "Male").addOption("female", "Female")
-                .setValue(this.gender)
-                .onChange((v) => { this.gender = v === "female" ? "female" : "male"; }));
-            new Setting(el).setName("Family name").addToggle((t) => t.setValue(false).onChange((v) => { this.withFamily = v; }));
-        }
 
         const listEl = createDiv();
         new Setting(el)

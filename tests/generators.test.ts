@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_SETTINGS } from "settings/DefaultSetting";
-import { GENERATORS, RACES, RETIRED, RETIRED_KEYS, inlineGenerators, raceName, retiredMessage } from "generators/registry";
+import { GENERATORS, RETIRED, RETIRED_KEYS, describeBuiltIn, inlineGenerators, replacementFor, retiredMessage } from "generators/registry";
+import { STARTERS } from "generators/starters";
+import { starterTitle } from "generators/starterChoices";
 import { SETTLEMENT_TYPES, generateSettlement } from "generators/settlement";
 import { clonePlain } from "settings/settingsData";
-import { titleLastNames } from "lists/titleLastNames";
-import { familyNameList } from "lists/humanFamilyNames";
 import keys124 from "./keys-1.2.4.json";
 
 const settings = clonePlain(DEFAULT_SETTINGS);
@@ -20,51 +20,27 @@ test("every generator gives text 50 times", () => {
     }
 });
 
-test("every race gives a name for both genders, with and without a family name", () => {
-    for (const r of RACES) for (const gender of ["male", "female"] as const) for (const fam of [false, true]) {
-        for (let i = 0; i < 10; i++) {
-            const name = raceName(r, gender, fam);
-            assert.ok(!bad(name), `${r.key} ${gender} ${fam}: ${name}`);
-        }
-    }
-});
-
 test("inline keys: every 1.2.4 key still works or is retired, plus the corrected spelling", () => {
     const gens = inlineGenerators();
     for (const k of keys124) assert.ok(k in gens || RETIRED_KEYS.includes(k), `missing ${k}`);
     for (const k of RETIRED_KEYS) assert.ok(!(k in gens), `retired key still built in: ${k}`);
-    assert.equal(RETIRED_KEYS.length, 37);
-    assert.equal(Object.keys(gens).length, 72 + 1);
+    assert.equal(RETIRED_KEYS.length, 37 + 64);
+    assert.equal(Object.keys(gens).length, 8 + 1);
     assert.deepEqual(Object.keys(gens).filter((k) => !(keys124).includes(k)), ["DungeonsLabyrinths"]);
     for (const [k, fn] of Object.entries(gens)) assert.ok(!bad(fn(settings)), k);
 });
 
-test("human names use their own family list; dwarf and elf family names come from the name library", () => {
-    const gens = inlineGenerators();
-    const human = RACES.find((r) => r.key === "Human");
-    assert.equal(human?.race, "human");
-    for (const r of ["Dwarf", "Elf"]) assert.equal(RACES.find((x) => x.key === r)?.familyList, undefined, r);
-    for (let i = 0; i < 20; i++) {
-        for (const k of ["DwarfMaleLastname", "DwarfFemaleLastname", "ElfMaleLastname", "ElfFemaleLastname"]) {
-            const n = gens[k](settings);
-            assert.ok(!bad(n) && n.trim().split(/\s+/).length >= 2, `${k}: ${n}`);
-        }
-        const h = gens.HumanFemaleLastname(settings).split(" ");
-        assert.ok(familyNameList.includes(h.slice(1).join(" ")), h.join(" "));
-    }
-});
-
-test("GnomeMale works (it returned an error in 1.2.4)", () => {
-    assert.ok(!bad(inlineGenerators().GnomeMale(settings)));
-});
-
 test("retired keys are 1.2.4 keys and explain themselves", () => {
     for (const k of RETIRED_KEYS) assert.ok(keys124.includes(k), k);
-    assert.equal(retiredMessage("Catfolk"), "@Catfolk was removed in 1.3.1. See the plugin's README.");
-    assert.equal(retiredMessage("Catfolk", "!"), "!Catfolk was removed in 1.3.1. See the plugin's README.");
+    assert.equal(retiredMessage("Catfolk"), '@Catfolk was removed in 1.3.1. Use the "Catfolk names" starter set instead: run "Add a starter set".');
+    assert.equal(retiredMessage("ElfFemaleLastname", "!"), '!ElfFemaleLastname was removed in 1.5.0. Use the "Elvish names" starter set instead: run "Add a starter set".');
+    assert.equal(retiredMessage("HumanMale"), '@HumanMale was removed in 1.5.0. Use one of the Human starter sets instead: run "Add a starter set".');
+    assert.equal(retiredMessage("TradingPost"), "@TradingPost was removed in 1.3.1. See the plugin's README.");
     assert.equal(retiredMessage("Religion"), "@Religion was removed in 1.3.2. See the plugin's README.");
     assert.equal(RETIRED.Groups, "1.3.2");
     assert.equal(RETIRED.TradingPost, "1.3.1");
+    assert.equal(RETIRED.OrcLastname, "1.5.0");
+    assert.equal(RETIRED.CavePersonFemale, "1.5.0");
     assert.ok(!GENERATORS.some((g) => g.group === "Groups and religions"));
 });
 
@@ -81,7 +57,16 @@ test("settlement: type on the ladder, population inside its range", () => {
     assert.match(text, /^Name: .+\nPopulation: [\d,.\s]+\nType: (Thorp|Hamlet|Village|Small Town|Medium Town|Large Town|Small City|Medium City|Large City|Great City|Metropolis)$/);
 });
 
-test("orc family names: no borrowed names, no stray full stops", () => {
-    assert.ok(!titleLastNames.includes("Ravenclaw"));
-    assert.ok(titleLastNames.every((n) => !n.endsWith(".")));
+test("1.5.0: every retired name key points at a starter set that exists", () => {
+    const names = new Set(STARTERS.map(starterTitle));
+    const labels = new Set(["Planar: Light", "Planar: Dark"]);
+    for (const k of RETIRED_KEYS) {
+        const set = replacementFor(k);
+        if (RETIRED[k] === "1.5.0") assert.ok(set, k);
+        if (!set || set === "Human") continue;
+        assert.ok(names.has(set) || labels.has(set), `${k} -> ${set}`);
+    }
+    assert.equal(describeBuiltIn("InnsTaverns"), "Settlements and buildings · Inns and taverns");
+    assert.equal(describeBuiltIn("ElfMale"), undefined);
 });
+

@@ -1,6 +1,5 @@
 /* Every generator in one place, used by the modal and the inline suggester.
    No Obsidian imports, so it runs in unit tests. Generators return plain text and throw on failure. */
-import { nameByRace } from "fantasy-name-generator";
 import { FantasyPluginSettings } from "settings/Datatypes";
 import { generateCityName } from "generators/city";
 import { generateSettlement } from "generators/settlement";
@@ -11,74 +10,11 @@ import { generateLoot } from "generators/loot";
 import { generatorMetals } from "generators/metal";
 import { generateShipName } from "generators/ship";
 import { generatePlotHook } from "generators/plothook";
-import { familyNameList } from "lists/humanFamilyNames";
-import { titleLastNames } from "lists/titleLastNames";
-import { pick } from "utils/random";
-
-export type Gender = "male" | "female";
 
 /** One generated result: `title` is shown in the list, `text` is what gets copied or inserted. */
 export interface Generated {
     title: string;
     text: string;
-}
-
-/* ---------------- names ---------------- */
-
-/** How a race's family name is made. */
-type FamilySource = "repeat" | "list";
-
-export interface RaceDef {
-    /** Inline key stem, e.g. "Dwarf" -> @DwarfMale, @DwarfMaleLastname */
-    key: string;
-    /** Shown in the modal */
-    label: string;
-    /** Id passed to the name library */
-    race: string;
-    /** Inline keys come in Male / Female versions */
-    gendered: boolean;
-    family?: FamilySource;
-    familyList?: string[];
-}
-
-const library = (key: string, label: string, race: string, gendered = true, familyList?: string[]): RaceDef =>
-    ({ key, label, race, gendered, family: familyList ? "list" : "repeat", familyList });
-
-export const RACES: RaceDef[] = [
-    library("Angel", "Angel", "angel"),
-    library("CavePerson", "Cave person", "cavePerson"),
-    library("DarkElf", "Dark elf", "darkelf"),
-    library("Demon", "Demon", "demon", false),
-    library("Dragon", "Dragon", "dragon"),
-    library("Drow", "Drow", "drow"),
-    library("Dwarf", "Dwarf", "dwarf"),
-    library("Elf", "Elf", "elf"),
-    library("Fairy", "Fairy", "fairy"),
-    library("Gnome", "Gnome", "gnome"),
-    library("Goblin", "Goblin", "goblin", false),
-    library("HalfDemon", "Half demon", "halfdemon"),
-    library("Halfling", "Halfling", "halfling"),
-    library("HighElf", "High elf", "highelf"),
-    library("HighFairy", "High fairy", "highfairy"),
-    library("Human", "Human", "human", true, familyNameList),
-    library("Ogre", "Ogre", "ogre", false),
-    library("Orc", "Orc", "orc", false, titleLastNames),
-];
-
-
-/** fantasy-name-generator returns an Error instead of throwing; turn that into a throw. */
-function libraryName(race: string, gender: Gender): string {
-    const result: string | Error = nameByRace(race, { gender });
-    if (result instanceof Error) throw result;
-    return result;
-}
-
-/** A name for a race, with or without a family name. */
-export function raceName(def: RaceDef, gender: Gender, withFamily: boolean): string {
-    const first = libraryName(def.race, gender);
-    if (!withFamily) return first;
-    const family = def.familyList ? pick(def.familyList) : libraryName(def.race, gender);
-    return `${first} ${family}`;
 }
 
 /* ---------------- everything else ---------------- */
@@ -116,63 +52,87 @@ export const GENERATORS: GeneratorDef[] = [
 ];
 
 /**
- * Inline keys retired in 1.3.1 and 1.3.2 (key -> version), to be rewritten in a later update.
- * They still show in the inline list, marked retired; picking one explains why instead of inserting text.
+ * Inline keys retired in 1.3.1, 1.3.2 and 1.5.0 (key -> version). They are not in the inline list;
+ * typing one in full shows a message (naming the starter set that replaces it, if any) instead of text.
  * A custom generator note may reuse any of these keys.
  */
+const RETIRED_1_3_1_NAMES: Record<string, string> = {
+    Aasimars: "Planar: Light", Catfolk: "Catfolk names", Fetchlings: "Shadow names", HalfElf: "Half-Elvish names",
+    HalfOrc: "Half-Orc names", Hobgoblin: "Kohrog names", Ifrits: "Elemental Fire names", Kobalds: "Draconic names",
+    Oreads: "Elemental Earth names", Ratfolk: "Ratfolk names", Sylphs: "Elemental Air names", Tengu: "Tengu names",
+    Tians: "Human", Tiefling: "Planar: Dark", Undines: "Elemental Water names",
+};
 const RETIRED_1_3_1: string[] = [
-    ...["Aasimars", "Catfolk", "Fetchlings", "HalfElf", "HalfOrc", "Hobgoblin", "Ifrits", "Kobalds", "Oreads",
-        "Ratfolk", "Sylphs", "Tengu", "Tians", "Tiefling", "Undines"].flatMap((k) => [k, `${k}Lastname`]),
+    ...Object.keys(RETIRED_1_3_1_NAMES).flatMap((k) => [k, `${k}Lastname`]),
     "Airships", "Artifacts", "AnimalGroups", "MagicalTrees", "TradingPost",
 ];
 const RETIRED_1_3_2: string[] = ["Religion", "Groups"];
+
+/** The built-in race names removed in 1.5.0 (the name library), by key stem, with the starter set that replaces them. */
+const RETIRED_1_5_0_NAMES: Record<string, string> = {
+    Angel: "Planar: Light", CavePerson: "Cave person names", DarkElf: "Elvish names", Demon: "Planar: Dark",
+    Dragon: "Draconic names", Drow: "Elvish names", Dwarf: "Dwarvish names", Elf: "Elvish names", Fairy: "Fey names",
+    Gnome: "Small folk names", Goblin: "Kohrog names", HalfDemon: "Planar: Dark", Halfling: "Small folk names",
+    HighElf: "Elvish names", HighFairy: "Fey names", Human: "Human", Ogre: "Kohrog names", Orc: "Kohrog names",
+};
+/** Demon, Goblin, Ogre and Orc had no Male/Female keys. */
+const UNGENDERED = ["Demon", "Goblin", "Ogre", "Orc"];
+const RETIRED_1_5_0: string[] = Object.keys(RETIRED_1_5_0_NAMES).flatMap((k) =>
+    UNGENDERED.includes(k) ? [k, `${k}Lastname`] : [`${k}Male`, `${k}MaleLastname`, `${k}Female`, `${k}FemaleLastname`]);
+
 export const RETIRED: Readonly<Record<string, string>> = {
     ...Object.fromEntries(RETIRED_1_3_1.map((k): [string, string] => [k, "1.3.1"])),
     ...Object.fromEntries(RETIRED_1_3_2.map((k): [string, string] => [k, "1.3.2"])),
+    ...Object.fromEntries(RETIRED_1_5_0.map((k): [string, string] => [k, "1.5.0"])),
 };
 export const RETIRED_KEYS: readonly string[] = Object.keys(RETIRED);
 
+/** The starter set that replaces a retired name key ("Elvish names"; "Human" = the Human sets), if any. */
+export function replacementFor(key: string): string | undefined {
+    const stem = key.replace(/(Male|Female)?(Lastname)?$/, "");
+    return RETIRED_1_5_0_NAMES[stem] ?? RETIRED_1_3_1_NAMES[stem];
+}
+
 /** What to tell someone who picks a retired key. */
 export function retiredMessage(key: string, trigger = "@"): string {
-    return `${trigger}${key} was removed in ${RETIRED[key] ?? "an earlier version"}. See the plugin's README.`;
+    const removed = `${trigger}${key} was removed in ${RETIRED[key] ?? "an earlier version"}.`;
+    const set = replacementFor(key);
+    if (!set) return `${removed} See the plugin's README.`;
+    const which = set === "Human" ? "one of the Human starter sets" : `the "${set}" starter set`;
+    return `${removed} Use ${which} instead: run "Add a starter set".`;
 }
 
 /** Inline keys kept from older versions that now point at a renamed key. */
 const ALIASES: Record<string, string> = { DungeonsLabyrinths: "DungeonsLabryinths" };
 
-/**
- * Every inline generator by key (the names users type after the trigger, e.g. @ElfFemaleLastname).
- * Keys match version 1.2.4 so nobody's habits break.
- */
+/** Is this an old spelling kept so older notes still work? (Left out of the inline list.) */
+export function isAlias(key: string): boolean {
+    return key in ALIASES;
+}
+
+/** Every inline generator by key (the names users type after the trigger, e.g. @InnsTaverns). */
 export function inlineGenerators(): Record<string, (settings: FantasyPluginSettings) => string> {
     const out: Record<string, (settings: FantasyPluginSettings) => string> = {};
     for (const g of GENERATORS) out[g.key] = (s) => g.run(s).text;
-    for (const r of RACES) {
-        if (r.gendered) {
-            for (const gender of ["male", "female"] as Gender[]) {
-                const g = gender === "male" ? "Male" : "Female";
-                out[`${r.key}${g}`] = () => raceName(r, gender, false);
-                out[`${r.key}${g}Lastname`] = () => raceName(r, gender, true);
-            }
-        } else {
-            out[r.key] = () => raceName(r, "male", false);
-            out[`${r.key}Lastname`] = () => raceName(r, "male", true);
-        }
-    }
     for (const [alias, target] of Object.entries(ALIASES)) out[alias] = out[target];
     return out;
 }
 
 /** The groups built-in generators belong to, in the order the generator window shows them. */
 export function builtInGroups(): string[] {
-    return [...new Set([...GENERATORS.map((g) => g.group), "Names"])];
+    return [...new Set(GENERATORS.map((g) => g.group))];
 }
 
 /** The group of every built-in inline key (aliases included). */
 export function groupOfKey(): Map<string, string> {
     const map = new Map<string, string>();
     for (const g of GENERATORS) map.set(g.key, g.group);
-    for (const k of Object.keys(inlineGenerators())) if (!map.has(k)) map.set(k, "Names");
-    for (const [alias, target] of Object.entries(ALIASES)) map.set(alias, map.get(target) ?? "Names");
+    for (const [alias, target] of Object.entries(ALIASES)) { const g = map.get(target); if (g) map.set(alias, g); }
     return map;
+}
+
+/** Second line for a built-in key in the inline list: "Settlements and buildings · Inns and taverns". */
+export function describeBuiltIn(key: string): string | undefined {
+    const g = GENERATORS.find((x) => x.key === key);
+    return g ? `${g.group} · ${g.label}` : undefined;
 }

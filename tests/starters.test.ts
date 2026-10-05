@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { parseGeneratorNote, resolveCustom, runCustom } from "generators/custom";
 import { STARTERS } from "generators/starters";
 
-test("starter kits: 19 language kits and 10 human kits, unique keys, each credits its source", () => {
-    assert.equal(STARTERS.length, 29);
+test("starter kits: 20 language kits and 10 human kits, unique keys, each credits its source", () => {
+    assert.equal(STARTERS.length, 30);
     assert.equal(STARTERS.filter((k) => k.races.includes("Human")).length, 10);
-    assert.equal(new Set(STARTERS.map((k) => k.key.toLowerCase())).size, 29);
+    assert.equal(new Set(STARTERS.map((k) => k.key.toLowerCase())).size, 30);
     for (const k of STARTERS) {
         const human = k.races.includes("Human");
         assert.match(k.note, human ? /US Social Security Administration baby-name data \(public domain\)/ : /generated with Vulgarlang \(vulgarlang\.com\)/, k.language);

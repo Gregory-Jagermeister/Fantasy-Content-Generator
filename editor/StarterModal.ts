@@ -23,6 +23,7 @@ export class StarterModal extends FuzzySuggestModal<StarterChoice> {
     }
 
     onChooseItem(choice: StarterChoice): void {
-        void this.plugin.addStarter(choice.kit);
+        if (choice.kit) void this.plugin.addStarter(choice.kit);
+        else void this.plugin.addAllStarters();
     }
 }

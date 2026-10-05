@@ -56,11 +56,11 @@ test("plot hooks: title on its own line, no trailing comma, possessives, no doub
     }
 });
 
-test("groups: every built-in key has a group; four groups", () => {
-    assert.deepEqual(builtInGroups(), ["Settlements and buildings", "Objects and vehicles", "Story tools", "Names"]);
+test("groups: every built-in key has a group; three groups (Names went in 1.5.0)", () => {
+    assert.deepEqual(builtInGroups(), ["Settlements and buildings", "Objects and vehicles", "Story tools"]);
     const groups = groupOfKey();
     for (const k of Object.keys(inlineGenerators())) assert.ok(groups.has(k), k);
-    assert.equal(groups.get("ElfMale"), "Names");
+    assert.equal(groups.get("ElfMale"), undefined);
     assert.equal(groups.get("Drinks"), "Objects and vehicles");
 });
 

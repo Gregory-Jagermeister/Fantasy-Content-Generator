@@ -5,11 +5,11 @@ import { FantasyPluginSettings } from "settings/Datatypes";
 import { DEFAULT_SETTINGS } from "settings/DefaultSetting";
 import { SettingTab } from "settings/SettingsTab";
 import { clonePlain, mergeSettings } from "settings/settingsData";
-import { groupOfKey, inlineGenerators, RETIRED_KEYS, retiredMessage } from "generators/registry";
+import { describeBuiltIn, groupOfKey, inlineGenerators, isAlias, replacementFor, RETIRED, RETIRED_KEYS, retiredMessage } from "generators/registry";
 import { runCustom } from "generators/custom";
 import { CustomGeneratorStore } from "custom/store";
 import { StarterModal } from "editor/StarterModal";
-import type { StarterKit } from "generators/starters";
+import { STARTERS, StarterKit } from "generators/starters";
 
 /** What other plugins (for example Templater) can call: app.plugins.plugins["fantasy-content-generator"].api */
 export interface FantasyGeneratorApi {
@@ -72,12 +72,29 @@ export default class FantasyPlugin extends Plugin {
 		return this.settings.hiddenGroups.includes(group);
 	}
 
-	/** Keys for the inline list: hidden groups left out (they still work when called). */
+	/** Keys for the inline list: hidden groups and old spellings left out (they still work when called). */
 	suggestKeys(): string[] {
 		return this.inlineKeys().filter((k) => {
+			if (isAlias(k) && !this.customs.active.has(k)) return false;
 			const group = this.groups.get(k);
 			return !group || this.customs.active.has(k) || !this.isGroupHidden(group);
 		});
+	}
+
+	/** Is this a starter set's key (or its "+ meaning" twin)? */
+	isStarterKey(key: string): boolean {
+		return STARTERS.some((k) => key === k.key || key === `${k.key}Meaning`);
+	}
+
+	/** Second line in the inline list: "Starter set · Elvish names", "Story tools · Plot and story hooks". */
+	describeKey(key: string): string {
+		const custom = this.customs.active.get(key);
+		if (custom) return `${this.isStarterKey(key) ? "Starter set" : "Custom"} · ${custom.name}`;
+		if (this.isRetired(key)) {
+			const set = replacementFor(key);
+			return `Retired in ${RETIRED[key]}${set ? ` · now ${set === "Human" ? "the Human starter sets" : `the ${set} starter set`}` : ""}`;
+		}
+		return describeBuiltIn(key) ?? "";
 	}
 
 	/** The key as written in a note ({@drinks}), matched to a real key ignoring case. */
@@ -87,9 +104,10 @@ export default class FantasyPlugin extends Plugin {
 		return this.inlineKeys().find((k) => k.toLowerCase() === lower) ?? key;
 	}
 
-	/** Keys removed in 1.3.1 that no custom generator has taken over. Shown in the inline list, marked retired. */
-	retiredKeys(): string[] {
-		return RETIRED_KEYS.filter((k) => !this.customs.active.has(k));
+	/** A retired key typed in full (any case) that no custom generator has taken over, so picking it can explain. */
+	retiredMatch(typed: string): string | undefined {
+		const lower = typed.toLowerCase();
+		return RETIRED_KEYS.find((k) => k.toLowerCase() === lower && !this.customs.active.has(k));
 	}
 
 	/** Is this a retired key that no custom generator has taken over? */
@@ -145,6 +163,23 @@ export default class FantasyPlugin extends Plugin {
 		} catch (e) {
 			console.error("Fantasy Content Generator: couldn't add the starter set", e);
 			new Notice(`Couldn't add the starter set: ${e instanceof Error ? e.message : String(e)}`);
+		}
+	}
+
+	/** Write every starter kit into the generator folder (never overwriting). Opens nothing. */
+	async addAllStarters(): Promise<void> {
+		let added = 0;
+		let kept = 0;
+		try {
+			for (const kit of STARTERS) {
+				const { existed } = await this.customs.addStarter(kit);
+				if (existed) kept++; else added++;
+			}
+			const trigger = this.settings.inlineCallout || "@";
+			new Notice(`Added ${added} starter set${added === 1 ? "" : "s"} to ${this.customs.folder() || "your generator folder"}${kept ? ` (${kept} already there, kept as they were)` : ""}. Type ${trigger} and a name, such as ${trigger}Dwarvish.`);
+		} catch (e) {
+			console.error("Fantasy Content Generator: couldn't add the starter sets", e);
+			new Notice(`Added ${added}, then couldn't add the rest: ${e instanceof Error ? e.message : String(e)}`);
 		}
 	}
 
