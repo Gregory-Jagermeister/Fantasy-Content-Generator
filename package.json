@@ -1,7 +1,7 @@
 {
 	"name": "fantasy-content-generator",
 	"version": "1.5.0",
-	"description": "Generate names, inns, settlements, loot and more for your TTRPG notes.",
+	"description": "Generate names, inns, settlements, loot and more for your TTRPG and worldbuilding notes, or build your own generators.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

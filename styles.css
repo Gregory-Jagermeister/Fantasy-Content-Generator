@@ -1,4 +1,4 @@
-/* Fantasy Content Generator: settings lists and the generator panel. Uses theme variables, so it suits light and dark themes. */
+/* TTRPG Content Generator: settings lists and the generator panel. Uses theme variables, so it suits light and dark themes. */
 
 .fcg-details {
     border: 1px solid var(--background-modifier-border);

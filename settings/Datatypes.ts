@@ -65,4 +65,6 @@ export interface FantasyPluginSettings {
     pinnedGenerators: string[];
     /** Generator keys used recently in the panel, newest first */
     recentGenerators: string[];
+    /** The one-time "now TTRPG Content Generator" notice (1.6.0) has been shown (or this is a fresh install) */
+    renameNotice160: boolean;
 }

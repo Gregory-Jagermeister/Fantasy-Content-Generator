@@ -205,5 +205,6 @@ export const DEFAULT_SETTINGS: FantasyPluginSettings = {
     settingsSection: "general",
     hiddenGroups: [],
     pinnedGenerators: [],
-    recentGenerators: []
+    recentGenerators: [],
+    renameNotice160: false
 }

@@ -76,11 +76,12 @@ export default class FantasyPlugin extends Plugin {
 			name: "Add the village example",
 			callback: () => { void this.addVillageExample(); },
 		});
+		this.app.workspace.onLayoutReady(() => this.showRenameNotice());
 		this.registerView(VIEW_TYPE_GENERATOR, (leaf) => new GeneratorView(leaf, this));
 		this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
 			if (leaf?.view instanceof MarkdownView) this.lastEditorLeaf = leaf;
 		}));
-		this.addRibbonIcon("scroll-text", "Open generator", () => { void this.openGenerator(); });
+		this.addRibbonIcon("scroll-text", "Open TTRPG Content Generator", () => { void this.openGenerator(); });
 		this.registerEditorSuggest(new InlineGeneratorSuggester(this.app, this));
 		this.addSettingTab(new SettingTab(this.app, this));
 	}
@@ -175,7 +176,7 @@ export default class FantasyPlugin extends Plugin {
 			await this.app.workspace.getLeaf(false).openFile(file);
 			new Notice(`Copied to ${file.path}.`);
 		} catch (e) {
-			console.error("Fantasy Content Generator: couldn't copy the generator", e);
+			console.error("TTRPG Content Generator: couldn't copy the generator", e);
 			new Notice(`Couldn't copy the generator: ${e instanceof Error ? e.message : String(e)}`);
 		}
 	}
@@ -240,7 +241,7 @@ export default class FantasyPlugin extends Plugin {
 				? `${file.path} is already in your generator folder, so it was left as it is.`
 				: `Added ${file.path}. Type ${trigger}${kit.key}, or ${trigger}${kit.key}Meaning where it has meanings.`);
 		} catch (e) {
-			console.error("Fantasy Content Generator: couldn't add the starter set", e);
+			console.error("TTRPG Content Generator: couldn't add the starter set", e);
 			new Notice(`Couldn't add the starter set: ${e instanceof Error ? e.message : String(e)}`);
 		}
 	}
@@ -257,7 +258,7 @@ export default class FantasyPlugin extends Plugin {
 			const trigger = this.settings.inlineCallout || "@";
 			new Notice(`Added ${added} starter set${added === 1 ? "" : "s"} to ${this.customs.folder() || "your generator folder"}${kept ? ` (${kept} already there, kept as they were)` : ""}. Type ${trigger} and a name, such as ${trigger}Dwarvish.`);
 		} catch (e) {
-			console.error("Fantasy Content Generator: couldn't add the starter sets", e);
+			console.error("TTRPG Content Generator: couldn't add the starter sets", e);
 			new Notice(`Added ${added}, then couldn't add the rest: ${e instanceof Error ? e.message : String(e)}`);
 		}
 	}
@@ -270,7 +271,7 @@ export default class FantasyPlugin extends Plugin {
 			if (script) await this.app.workspace.getLeaf(false).openFile(script);
 			new Notice(`Village example: added ${added} note${added === 1 ? "" : "s"}${kept ? ` (${kept} already there, kept as they were)` : ""}. See "Build a village (how to)".`);
 		} catch (e) {
-			console.error("Fantasy Content Generator: couldn't add the village example", e);
+			console.error("TTRPG Content Generator: couldn't add the village example", e);
 			new Notice(`Couldn't add the village example: ${e instanceof Error ? e.message : String(e)}`);
 		}
 	}
@@ -282,7 +283,7 @@ export default class FantasyPlugin extends Plugin {
 			await this.app.workspace.getLeaf(false).openFile(file);
 			new Notice(`Created ${file.path}. Edit the lists, then type @ and its name.`);
 		} catch (e) {
-			console.error("Fantasy Content Generator: couldn't create a generator", e);
+			console.error("TTRPG Content Generator: couldn't create a generator", e);
 			new Notice(`Couldn't create the generator: ${e instanceof Error ? e.message : String(e)}`);
 		}
 	}
@@ -293,13 +294,24 @@ export default class FantasyPlugin extends Plugin {
 			const first = text.split("\n")[0];
 			new Notice(`Copied: ${first.length > 60 ? first.slice(0, 57) + "..." : first}`);
 		} catch (e) {
-			console.error("Fantasy Content Generator: copy failed", e);
+			console.error("TTRPG Content Generator: copy failed", e);
 			new Notice("Couldn't copy to the clipboard.");
 		}
 	}
 
 	async loadSettings(): Promise<void> {
-		this.settings = mergeSettings(DEFAULT_SETTINGS, await this.loadData());
+		const saved: unknown = await this.loadData();
+		this.settings = mergeSettings(DEFAULT_SETTINGS, saved);
+		// A fresh install never used the old name, so it doesn't need the rename notice.
+		if (saved === null || saved === undefined) this.settings.renameNotice160 = true;
+	}
+
+	/** Once, after updating to 1.6.0: say the plugin was renamed and where names come from now. */
+	private showRenameNotice(): void {
+		if (this.settings.renameNotice160) return;
+		new Notice("Fantasy Content Generator is now TTRPG Content Generator. Names now come from starter sets: search the command palette for \"starter set\".", 15000);
+		this.settings.renameNotice160 = true;
+		void this.saveSettings();
 	}
 
 	async saveSettings(): Promise<void> {

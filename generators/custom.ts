@@ -250,7 +250,7 @@ export function runCustomData(gen: CustomGenerator, host: EngineHost = {}, depth
 }
 
 /** The plugin's wiki: the full guide to generator notes (1.6.0). */
-export const WIKI_URL = "https://github.com/Gregory-Jagermeister/Fantasy-Content-Generator/wiki";
+export const WIKI_URL = "https://github.com/Gregory-Jagermeister/TTRPG-Content-Generator/wiki";
 
 /** Starter note for the New generator command (structure only; the words are placeholders). */
 export function starterNote(name: string): string {

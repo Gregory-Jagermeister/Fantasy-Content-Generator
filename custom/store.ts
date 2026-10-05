@@ -64,7 +64,7 @@ export class CustomGeneratorStore {
                 const gen = parseGeneratorNote(file.path, fm, await app.vault.cachedRead(file));
                 if (gen) gens.push(gen);
             } catch (e) {
-                console.error(`Fantasy Content Generator: couldn't read ${file.path}`, e);
+                console.error(`TTRPG Content Generator: couldn't read ${file.path}`, e);
             }
         }
         this.active = resolveCustom(gens, this.plugin.builtInKeys());

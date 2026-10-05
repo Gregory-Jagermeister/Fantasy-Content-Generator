@@ -57,7 +57,7 @@ function readPickedFile(file: File): Promise<string> {
 /** Offer some data as a .json download. */
 function downloadJson(data: unknown, name: string): void {
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-    const a = createEl("a", { attr: { href: url, download: `fantasy-content-generator-${name}.json` } });
+    const a = createEl("a", { attr: { href: url, download: `ttrpg-content-generator-${name}.json` } });
     a.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -72,7 +72,7 @@ export class SettingTab extends PluginSettingTab {
 
     private save(): void {
         this.plugin.saveSettings().catch((e) => {
-            console.error("Fantasy Content Generator: saving settings failed", e);
+            console.error("TTRPG Content Generator: saving settings failed", e);
             new Notice("Couldn't save the settings.");
         });
     }
