@@ -51,7 +51,7 @@ export class GeneratorView extends ItemView {
     }
 
     getIcon(): string {
-        return "dices";
+        return "scroll-text";
     }
 
     async onOpen(): Promise<void> {

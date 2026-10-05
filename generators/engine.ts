@@ -575,8 +575,10 @@ export function buildModel(samples: string[]): NameModel {
  * One letter after `history`, using the longest context the samples have seen, falling back to shorter ones.
  * Few samples use 2 letters of context (3 would mostly copy them); 50 or more use 3.
  */
-function nextLetter(model: NameModel, history: string[]): string | undefined {
-    const top = model.samples.size >= 50 ? ORDER : 2;
+function nextLetter(model: NameModel, history: string[], looser = false): string | undefined {
+    // The second half of the tries uses one letter less of context: a list of short samples can otherwise keep
+    // rebuilding its own samples and never find a new name (1.6.0 fix).
+    const top = model.samples.size >= 50 && !looser ? ORDER : 2;
     for (let k = top; k >= 1; k--) {
         const table = model.orders[k].get(history.slice(-k).join("\u0001"));
         if (table?.size) return pickWeighted([...table].map(([item, weight]) => ({ item, weight })));
@@ -596,7 +598,7 @@ export function learnName(model: NameModel, limits: { min?: number; max?: number
         const history = START.repeat(ORDER).split("");
         const out: string[] = [];
         while (out.length <= max) {
-            const c = nextLetter(model, history);
+            const c = nextLetter(model, history, tries >= LEARN_TRIES / 2);
             if (c === undefined || c === END) break;
             out.push(c);
             history.push(c);

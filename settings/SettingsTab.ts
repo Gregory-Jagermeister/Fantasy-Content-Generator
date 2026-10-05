@@ -20,23 +20,27 @@ interface SectionDef {
     label: string;
     file: string;
     lists: ListDef[];
+    /** One line at the top of the tab showing how the lists make a result (1.6.0, M5) */
+    example?: string;
 }
 
 const SECTIONS: SectionDef[] = [
-    { key: "citySettings", label: "Settlements", file: "settlements", lists: [{ field: "prefixArray", label: "Prefixes" }, { field: "suffixArray", label: "Suffixes" }] },
+    { key: "citySettings", label: "Settlements", file: "settlements", lists: [{ field: "prefixArray", label: "Prefixes" }, { field: "suffixArray", label: "Suffixes" }], example: "Town names mix three shapes: prefix + suffix (Red + ford = Redford), made-up sounds + suffix (Bakoford), or prefix + made-up (North Bako)." },
     {
         key: "innSettings", label: "Inns and taverns", file: "inns", lists: [
             { field: "prefixes", label: "Prefixes" }, { field: "innType", label: "Types" }, { field: "nouns", label: "Nouns" },
             { field: "desc", label: "Descriptions" }, { field: "rumors", label: "Rumors" },
         ],
+        example: "Inn names are prefix + noun + type: Silver + Goblin + Tavern = Silver Goblin Tavern. Each inn also gets one description and three rumours.",
     },
-    { key: "drinkSettings", label: "Drinks", file: "drinks", lists: [{ field: "adj", label: "Adjectives" }, { field: "nouns", label: "Nouns" }] },
-    { key: "lootSettings", label: "Loot", file: "loot", lists: [{ field: "adj", label: "Adjectives" }, { field: "items", label: "Items", weighted: true }] },
+    { key: "drinkSettings", label: "Drinks", file: "drinks", lists: [{ field: "adj", label: "Adjectives" }, { field: "nouns", label: "Nouns" }], example: "Drinks are one or two adjectives + a noun: Ancient + Ale = Ancient Ale." },
+    { key: "lootSettings", label: "Loot", file: "loot", lists: [{ field: "adj", label: "Adjectives" }, { field: "items", label: "Items", weighted: true }], example: "Each roll gives 1 to 5 items, adjective + item: a rusty sword. Items with a higher weight come up more often." },
     {
         key: "dungeonSettings", label: "Dungeons", file: "dungeons", lists: [
             { field: "adjectives", label: "Adjectives" }, { field: "nouns", label: "Nouns" }, { field: "locations", label: "Locations" },
             { field: "dungeonTypes", label: "Types" }, { field: "randomDesc", label: "Descriptors" },
         ],
+        example: "Names are \"Type of the Adjective Noun\" or \"The Adjective Noun\": Crypt of the Haunted Wraith. The description adds a location and a descriptor.",
     },
 ];
 
@@ -275,6 +279,7 @@ export class SettingTab extends PluginSettingTab {
     private listSection(containerEl: HTMLElement, def: SectionDef): void {
         const settings = this.plugin.settings as unknown as Record<SectionKey, Record<string, unknown[]>>;
         const defaults = DEFAULT_SETTINGS as unknown as Record<SectionKey, Record<string, unknown[]>>;
+        if (def.example) containerEl.createEl("p", { cls: "setting-item-description fcg-section-example", text: def.example });
         this.importExport(containerEl, def.file, () => settings[def.key], defaults[def.key], (data) => {
             settings[def.key] = data as Record<string, unknown[]>;
         });

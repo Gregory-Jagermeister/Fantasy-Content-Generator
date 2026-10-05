@@ -3,6 +3,10 @@ import type FantasyPlugin from "main";
 import { rankKeys } from "generators/custom";
 import { retiredMessage } from "generators/registry";
 
+/** The @ list's "Add a starter set" choice, offered while no starter sets are added (1.6.0, H1). */
+export const ADD_STARTER = "\u0000add-starter";
+const ADD_STARTER_WORDS = "add a starter set names";
+
 /** Type the trigger (default "@") then a generator name, e.g. "@ElfFemale", and pick it to insert a result. */
 export class InlineGeneratorSuggester extends EditorSuggest<string> {
     private readonly plugin: FantasyPlugin;
@@ -38,10 +42,18 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
             for (const k of keys) if (!seen.has(k) && this.plugin.describeKey(k).toLowerCase().includes(q)) ranked.push(k);
         }
         const retired = this.plugin.retiredMatch(context.query);
-        return retired ? [retired, ...ranked] : ranked;
+        const out = retired ? [retired, ...ranked] : ranked;
+        // No name generators yet: offer to add one (when nothing typed, when the words match, or when nothing else does).
+        if (!this.plugin.hasStarterSets() && (!q || ADD_STARTER_WORDS.includes(q) || !out.length)) out.push(ADD_STARTER);
+        return out;
     }
 
     renderSuggestion(value: string, el: HTMLElement): void {
+        if (value === ADD_STARTER) {
+            el.createDiv({ text: "Add a starter set" });
+            el.createDiv({ text: "No name generators yet", cls: "fcg-suggestion-note" });
+            return;
+        }
         el.createDiv({ text: value });
         const note = this.plugin.describeKey(value);
         if (note) el.createDiv({ text: note, cls: "fcg-suggestion-note" });
@@ -58,6 +70,11 @@ export class InlineGeneratorSuggester extends EditorSuggest<string> {
         const trigger = this.plugin.settings.inlineCallout || "@";
         const inDoc = end.line <= editor.lastLine() && end.ch <= editor.getLine(end.line).length;
         if (!inDoc || !editor.getRange(start, end).startsWith(trigger)) return;
+        if (value === ADD_STARTER) {
+            editor.replaceRange("", start, end);
+            this.plugin.openStarters();
+            return;
+        }
         if (this.plugin.isRetired(value)) {
             new Notice(retiredMessage(value, trigger));
             return;

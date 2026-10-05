@@ -75,7 +75,7 @@ export default class FantasyPlugin extends Plugin {
 		this.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
 			if (leaf?.view instanceof MarkdownView) this.lastEditorLeaf = leaf;
 		}));
-		this.addRibbonIcon("dices", "Open generator", () => { void this.openGenerator(); });
+		this.addRibbonIcon("scroll-text", "Open generator", () => { void this.openGenerator(); });
 		this.registerEditorSuggest(new InlineGeneratorSuggester(this.app, this));
 		this.addSettingTab(new SettingTab(this.app, this));
 	}
@@ -102,6 +102,12 @@ export default class FantasyPlugin extends Plugin {
 			const group = this.groups.get(k);
 			return !group || this.customs.active.has(k) || !this.isGroupHidden(group);
 		});
+	}
+
+	/** Has the user added any starter set (name generators)? */
+	hasStarterSets(): boolean {
+		for (const k of this.customs.active.keys()) if (this.isStarterKey(k)) return true;
+		return false;
 	}
 
 	/** Is this a starter set's key (or its "+ meaning" twin)? */

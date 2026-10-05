@@ -116,6 +116,7 @@ test("inline ranking: starts-with first, then anywhere", () => {
 test("starter and example notes are valid generators", () => {
     const starter = parseGeneratorNote("G/New generator.md", { "fcg-generator": "New generator" }, starterNote("New generator"));
     assert.ok(starter && !starter.problems.length, starter?.problems.join());
+    assert.match(starterNote("New generator"), /Example generator" note in this folder.*wiki/s, "M6: points to the example note and the wiki");
     const ex = parseGeneratorNote("G/Example generator.md", { "fcg-generator": "Example generator", "fcg-key": "Example" }, EXAMPLE_NOTE);
     assert.ok(ex && !ex.problems.length, ex?.problems.join());
     assert.equal(ex.lists.size, 5, "the explanation bullets under # are not a list");

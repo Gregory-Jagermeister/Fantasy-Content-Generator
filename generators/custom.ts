@@ -249,6 +249,9 @@ export function runCustomData(gen: CustomGenerator, host: EngineHost = {}, depth
     return { text: meaning ? `${text} (${meaning})` : text, values: ev.values() };
 }
 
+/** The plugin's wiki: the full guide to generator notes (1.6.0). */
+export const WIKI_URL = "https://github.com/Gregory-Jagermeister/Fantasy-Content-Generator/wiki";
+
 /** Starter note for the New generator command (structure only; the words are placeholders). */
 export function starterNote(name: string): string {
     return `---
@@ -259,6 +262,8 @@ Type @${keyFromName(name)} in any note to use this generator.
 \`\`\`pattern
 {First} {Family}
 \`\`\`
+
+Need help? The "Example generator" note in this folder shows every rule, and the plugin's wiki has the full guide: ${WIKI_URL}
 
 ## First
 - First A

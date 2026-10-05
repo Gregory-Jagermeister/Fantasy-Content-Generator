@@ -6,6 +6,7 @@ import { STARTERS } from "generators/starters";
 import { starterTitle } from "generators/starterChoices";
 import { SETTLEMENT_TYPES, generateSettlement } from "generators/settlement";
 import { clonePlain } from "settings/settingsData";
+import { generateCityName } from "generators/city";
 import keys124 from "./keys-1.2.4.json";
 
 const settings = clonePlain(DEFAULT_SETTINGS);
@@ -70,3 +71,15 @@ test("1.5.0: every retired name key points at a starter set that exists", () => 
     assert.equal(describeBuiltIn("ElfMale"), undefined);
 });
 
+
+test("settlement names: three shapes, prefixes used (1.6.0 fix)", () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 300; i++) {
+        const n = generateCityName({ prefixArray: ["red"], suffixArray: ["ford"] });
+        if (n === "Redford") seen.add("prefix+suffix");
+        else if (/^Red [A-Z][a-z]+$/.test(n)) seen.add("prefix+made-up");
+        else if (/^[A-Z][a-z]+ford$/.test(n)) seen.add("made-up+suffix");
+        else assert.fail(`unexpected shape: ${n}`);
+    }
+    assert.equal(seen.size, 3, [...seen].join());
+});

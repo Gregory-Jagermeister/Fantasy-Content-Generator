@@ -44,6 +44,11 @@ export function generateCityName(settings : cityGeneratorSetting) {
   
     generatedName = capitalize(generatedName);
     prefix = capitalize(prefix);
-    return numSyllables > 3 ? `${prefix} ${generatedName}` : `${generatedName}${suffix}`;
+    // Three shapes, about a third each (1.6.0; before, the prefix was never used):
+    // prefix + suffix (Redford), made-up + suffix (Bakoford), prefix + made-up (North Bako).
+    const shape = Math.floor(Math.random() * 3);
+    if (shape === 0 && prefix && suffix) return `${prefix}${suffix}`;
+    if (shape === 2 && prefix) return `${prefix} ${generatedName}`;
+    return `${generatedName}${suffix ?? ""}`;
 }
   
