@@ -1,6 +1,6 @@
 {
 	"name": "fantasy-content-generator",
-	"version": "1.6.0",
+	"version": "1.6.1",
 	"description": "Generate names, inns, settlements, loot and more for your TTRPG and worldbuilding notes, or build your own generators.",
 	"main": "main.js",
 	"scripts": {
@@ -21,7 +21,7 @@
 		"eslint": "^9.39.0",
 		"eslint-plugin-obsidianmd": "0.4.2",
 		"globals": "^14.0.0",
-		"obsidian": "1.8.7",
+		"obsidian": "1.13.1",
 		"tslib": "^2.8.1",
 		"typescript": "5.9.3",
 		"typescript-eslint": "^8.46.0"

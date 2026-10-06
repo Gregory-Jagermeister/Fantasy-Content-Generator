@@ -70,12 +70,14 @@ The id stays `fantasy-content-generator` after the rename. Details on the [wiki]
 
 ## Settings
 
-| Section | What you can change |
+Every setting shows up in Obsidian's settings search.
+
+| Where | What you can change |
 |---|---|
-| General | The inline trigger (`@`), the default amount, which groups show, reset to defaults |
-| Custom generators | The generator folder, new generator, starter sets, the list of generators found and their problems |
-| Currency | Whether loot includes coins, how often, and your currencies |
-| Settlements, Inns and taverns, Drinks, Loot, Dungeons | The word lists the built-in generators use; each tab shows an example, and each can be imported or exported as a `.json` file |
+| Main page | The inline trigger (`@`), the default amount, which groups show, reset to defaults |
+| Custom generators page | The generator folder, new generator, starter sets, the village example, and the generators found with their problems |
+| Currency page | Whether loot includes coins, how often, and your currencies |
+| Settlements, Inns and taverns, Drinks, Loot, Dungeons pages | The word lists the built-in generators use: add with **+**, remove with **×**, a filter box on each list, and import or export as a `.json` file |
 
 ## Credits
 
@@ -84,6 +86,8 @@ The starter sets are built from:
 - Human first names: US Social Security Administration baby-name data (<https://www.ssa.gov/oact/babynames/>, public domain). Surname parts collected by Gregory-Jagermeister.
 
 ## Changelog
+
+**1.6.1**: settings rebuilt so they show up in Obsidian's settings search (needs Obsidian 1.13.1).
 
 **1.6.0**: renamed to TTRPG Content Generator; the generator panel; patterns in notes; if/else, loops and maths; passing values between generators; the village example. Full list and older versions in [CHANGELOG.md](CHANGELOG.md).
 

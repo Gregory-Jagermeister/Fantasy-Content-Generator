@@ -14,8 +14,6 @@ export default defineConfig([
 			},
 		},
 		rules: {
-			// getSettingDefinitions() needs Obsidian 1.13; this plugin supports 1.4.10 and up (minAppVersion).
-			"obsidianmd/settings-tab/prefer-setting-definitions": "off",
 			// The plugin's names (new and old) keep their capitals.
 			"obsidianmd/ui/sentence-case": ["warn", { brands: ["TTRPG Content Generator", "Fantasy Content Generator", "Obsidian", "Templater"] }],
 		},

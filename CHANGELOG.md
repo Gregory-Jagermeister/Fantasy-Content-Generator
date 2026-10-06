@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.1
+
+**Settings, rebuilt with Obsidian's new settings system**
+- Every setting shows up in **Obsidian's settings search** (try "trigger", "rumors" or "currency").
+- The tabs are now pages: **Custom generators** (its entry shows how many generators were found, with a warning mark when one has a problem), **Currency**, and one page per word list (**Settlements**, **Inns and taverns**, **Drinks**, **Loot**, **Dungeons**).
+- Word lists: **+** to add words (paste one per line, or comma separated), **×** to remove one, and a **filter box** on each list. The words themselves stay out of the settings search.
+- The generator folder has a folder picker; **Add the village example** is on the Custom generators page.
+- Your saved settings and word lists carry over unchanged.
+
+**Other**
+- Requires **Obsidian 1.13.1** or newer. On older Obsidian, 1.6.0 stays available (from Obsidian 1.7.2) and 1.5.0 before that.
+- 1.6.0 said it needed Obsidian 1.4.10, but it uses features from 1.7.2; fixed in its listing so older apps aren't offered it.
+
 ## 1.6.0
 
 **Renamed:** Fantasy Content Generator is now **TTRPG Content Generator**, for any genre. The plugin id is unchanged, so settings, hotkeys and Templater scripts keep working. The GitHub repository is now `Gregory-Jagermeister/TTRPG-Content-Generator` (the old address redirects).

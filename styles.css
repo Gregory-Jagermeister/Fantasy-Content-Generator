@@ -1,44 +1,6 @@
 /* TTRPG Content Generator: settings lists and the generator panel. Uses theme variables, so it suits light and dark themes. */
 
-.fcg-details {
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-m);
-    background-color: var(--background-secondary);
-    margin: 0.5em 0 1.5em;
-    padding: 0.5em;
-}
-
-.fcg-details[open] > .fcg-summary {
-    border-bottom: 1px solid var(--background-modifier-border);
-    margin-bottom: 0.5em;
-}
-
-.fcg-summary {
-    font-weight: var(--font-semibold);
-    cursor: pointer;
-    padding: 0.25em 0;
-}
-
-.fcg-hidden-input {
-    display: none;
-}
-
-
-/* Settings: section tabs (desktop) */
-.fcg-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--size-4-2);
-    margin-bottom: var(--size-4-4);
-    border-bottom: 1px solid var(--background-modifier-border);
-    padding-bottom: var(--size-4-2);
-}
-
-.fcg-tab.is-active {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-}
-
+/* Settings: problems under a generator in the Found list */
 .fcg-problems {
     color: var(--text-error);
     margin: var(--size-4-1) 0 0;
@@ -252,4 +214,10 @@
 .is-mobile .fcg-pin {
     min-width: 2.5em;
     min-height: 2.5em;
+}
+
+/* Settings: the window for adding words to a list */
+.fcg-add-words {
+    width: 100%;
+    min-height: 8em;
 }

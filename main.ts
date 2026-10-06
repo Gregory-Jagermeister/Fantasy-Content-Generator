@@ -38,6 +38,8 @@ export default class FantasyPlugin extends Plugin {
 	lastAmount: number | null = null;
 	/** What the generator panel shows; kept here so results survive closing and reopening the panel. */
 	panelState: PanelState = { key: "", results: [], meanings: false, keep: false };
+	/** The plugin's settings tab (rebuilt when generator notes change, so "N found" stays right). */
+	private settingTab: SettingTab | null = null;
 	/** The last note being edited, where the panel's Insert goes (a Markdown leaf, not one of this plugin's views). */
 	private lastEditorLeaf: WorkspaceLeaf | null = null;
 	private builtIns = inlineGenerators();
@@ -83,7 +85,8 @@ export default class FantasyPlugin extends Plugin {
 		}));
 		this.addRibbonIcon("scroll-text", "Open TTRPG Content Generator", () => { void this.openGenerator(); });
 		this.registerEditorSuggest(new InlineGeneratorSuggester(this.app, this));
-		this.addSettingTab(new SettingTab(this.app, this));
+		this.settingTab = new SettingTab(this.app, this);
+		this.addSettingTab(this.settingTab);
 	}
 
 	/** Keys of the generators that ship with the plugin. */
@@ -193,8 +196,9 @@ export default class FantasyPlugin extends Plugin {
 		await workspace.revealLeaf(leaf);
 	}
 
-	/** Redraw open generator panels (after generator notes change). */
+	/** Redraw open generator panels and the settings (after generator notes change). */
 	refreshPanels(): void {
+		this.settingTab?.update();
 		for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_GENERATOR)) {
 			if (leaf.view instanceof GeneratorView) leaf.view.render();
 		}

@@ -57,8 +57,6 @@ export interface FantasyPluginSettings {
     generatorFolder: string;
     /** Amount the generator panel starts with */
     defaultAmount: number;
-    /** Settings section shown last */
-    settingsSection: string;
     /** Built-in groups hidden from the generator panel and the inline list */
     hiddenGroups: string[];
     /** Generator keys pinned to the top of the generator panel, in the order pinned */
