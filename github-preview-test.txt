@@ -1,0 +1,1 @@
+Temporary file to check how 1.6.0 looks on GitHub before the release. Delete it afterwards.
