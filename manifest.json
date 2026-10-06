@@ -2,7 +2,7 @@
 	"id": "fantasy-content-generator",
 	"name": "TTRPG Content Generator",
 	"version": "1.6.0",
-	"minAppVersion": "1.4.10",
+	"minAppVersion": "1.7.2",
 	"description": "Generate names, inns, settlements, loot and more for your TTRPG and worldbuilding notes, or build your own generators.",
 	"author": "Gregory Jagermeister",
 	"isDesktopOnly": false
